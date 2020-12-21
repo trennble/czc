@@ -18,8 +18,10 @@ import static com.lj.czc.service.MonitorServiceImpl.SKU_URL;
 @Service
 public class RobotServiceImpl {
 
+    public static final String serverUrl = "https://oapi.dingtalk.com/robot/send?access_token=bdbcb8673d95f1eb2d2287f7861d28655d2ecda5943202fe335a0b2b203f81ca";
+
     public void send(String msg){
-        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.com/robot/send?access_token=566cc69da782ec******");
+        DingTalkClient client = new DefaultDingTalkClient(serverUrl);
         OapiRobotSendRequest request = new OapiRobotSendRequest();
         request.setMsgtype("text");
         OapiRobotSendRequest.Text text = new OapiRobotSendRequest.Text();
@@ -33,7 +35,7 @@ public class RobotServiceImpl {
     }
 
     public void sendFail(){
-        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.com/robot/send?access_token=566cc69da782ec******");
+        DingTalkClient client = new DefaultDingTalkClient(serverUrl);
         OapiRobotSendRequest request = new OapiRobotSendRequest();
         request.setMsgtype("text");
         OapiRobotSendRequest.Actioncard actioncard = new OapiRobotSendRequest.Actioncard();
