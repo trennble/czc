@@ -13,11 +13,8 @@ import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
@@ -35,7 +32,7 @@ import java.util.concurrent.Executors;
 public class MonitorServiceImpl {
 
     public static final String LIST_URL = "https://jingli-server-c.jd.com/fuli/search/searchList?page=%s&cat=653-655";
-    public static final String SKU_URL = "https://jingli-server-c.jd.com/fuli/product/detail?productCode=1229631862&areaIds=22_1930_49324_49398";
+    public static final String SKU_URL = "https://jingli-server-c.jd.com/fuli/product/detail?productCode=%s&areaIds=22_1930_49324_49398";
 
 
     @Value("${skus}")
@@ -48,6 +45,9 @@ public class MonitorServiceImpl {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private RobotServiceImpl robotService;
 
     private Map<String, String> skuStatus = new ConcurrentHashMap<>();
 
@@ -166,7 +166,7 @@ public class MonitorServiceImpl {
                 log.info("初始化商品[{}]状态[{}]", skuId, desc);
             }else{
                 log.info("新上架商品[{}]状态[{}]", skuId, desc);
-                // EmailUtil.sendStatusChange(newSkuInfo);
+                robotService.send(buildMsg(newSkuInfo));
             }
         }else{
             SkuInfo existSku = listSkuStatus.get(skuId);
@@ -177,7 +177,7 @@ public class MonitorServiceImpl {
                 existSku.setDesc(desc);
                 existSku.setWPrice(wPrice);
                 existSku.setSerialNumber(serialNumber);
-                // EmailUtil.sendStatusChange(newSkuInfo);
+                robotService.send(buildMsg(newSkuInfo));
             }
         }
     }
@@ -219,9 +219,10 @@ public class MonitorServiceImpl {
                         printListInfo();
                         if (init) {
                             init = false;
+                            robotService.send("监控初始化成功");
                         }
                     } catch (Exception e) {
-
+                        log.error("程序发生异常[{}]", e.getMessage());
                         e.printStackTrace();
                         Thread.sleep(10000);
                     }
@@ -231,10 +232,22 @@ public class MonitorServiceImpl {
                     Thread.sleep(1000);
                 }
                 log.error("重试次数过多，停止检测");
+                robotService.sendFail();
             } catch (InterruptedException interruptedException) {
                 interruptedException.printStackTrace();
             }
         });
+    }
+
+    private String buildMsg(SkuInfo skuInfo) {
+        String url = String.format(SKU_URL, skuInfo.getSkuId());
+        return "诚至诚商品库存变更提示\n" +
+                "商品id：" + skuInfo.getSkuId() + "\n" +
+                "商品名称：" + skuInfo.getName() + "\n" +
+                "商品状态：" + skuInfo.getDesc() + "\n" +
+                "京东价格：" + skuInfo.getHPrice() + "\n" +
+                "批发价格：" + skuInfo.getWPrice() + "\n" +
+                "商品链接：" + url;
     }
 
     /**

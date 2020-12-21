@@ -59,6 +59,13 @@
             <artifactId>mail</artifactId>
             <version>1.4.7</version>
         </dependency>
+        <dependency>
+            <groupId>com.dingtalk.api</groupId>
+            <artifactId>top-api-sdk-dev</artifactId>
+            <version>latest</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/libs/taobao-sdk-java-auto.jar</systemPath>
+        </dependency>
     </dependencies>
 
     <build>
@@ -68,6 +75,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>2.3.1.RELEASE</version>
+                <configuration>
+                    <includeSystemScope>true</includeSystemScope>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
