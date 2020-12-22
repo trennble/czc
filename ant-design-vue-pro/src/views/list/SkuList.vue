@@ -192,7 +192,7 @@ export default {
           if (that.lastUpdateTs == null) {
             that.lastUpdateTs = newTs
           }
-          if (that.lastUpdateTs <= newTs) {
+          if (that.lastUpdateTs < newTs) {
             that.lastUpdateTs = newTs
             that.playAudio()
           }
