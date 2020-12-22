@@ -37,7 +37,7 @@ public class RobotServiceImpl {
     public void sendFail(){
         DingTalkClient client = new DefaultDingTalkClient(serverUrl);
         OapiRobotSendRequest request = new OapiRobotSendRequest();
-        request.setMsgtype("text");
+        request.setMsgtype("actionCard");
         OapiRobotSendRequest.Actioncard actioncard = new OapiRobotSendRequest.Actioncard();
         OapiRobotSendRequest.Btns btn = new OapiRobotSendRequest.Btns();
         btn.setTitle("重启");
