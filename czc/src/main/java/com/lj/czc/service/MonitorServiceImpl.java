@@ -169,7 +169,7 @@ public class MonitorServiceImpl {
                 log.info("初始化商品[{}]状态[{}]", skuId, desc);
             }else{
                 log.info("新上架商品[{}]状态[{}]", skuId, desc);
-                robotService.send(buildMsg(newSkuInfo));
+                robotService.send(buildMsg(newSkuInfo, "诚至诚商品上架提示"));
             }
         }else{
             SkuInfo existSku = listSkuStatus.get(skuId);
@@ -181,7 +181,7 @@ public class MonitorServiceImpl {
                 existSku.setWPrice(wPrice);
                 existSku.setSerialNumber(serialNumber);
                 if ("有货".equals(desc)){
-                    robotService.send(buildMsg(newSkuInfo));
+                    robotService.send(buildMsg(newSkuInfo, "诚至诚商品变更提示"));
                 }
             }
         }
@@ -250,9 +250,9 @@ public class MonitorServiceImpl {
         });
     }
 
-    private String buildMsg(SkuInfo skuInfo) {
+    private String buildMsg(SkuInfo skuInfo, String title) {
         String url = String.format(SKU_URL, skuInfo.getSkuId());
-        return "诚至诚商品库存变更提示\n" +
+        return title + "\n" +
                 "商品id：" + skuInfo.getSkuId() + "\n" +
                 "商品名称：" + skuInfo.getName() + "\n" +
                 "商品状态：" + skuInfo.getDesc() + "\n" +
