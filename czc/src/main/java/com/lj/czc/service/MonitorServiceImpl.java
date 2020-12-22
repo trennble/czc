@@ -214,39 +214,37 @@ public class MonitorServiceImpl {
                 int serialNumber = 0;
                 try {
                     while (true) {
-                        boolean success = false;
                         try {
                             int page = 1;
                             int totalPage = getPage(page, serialNumber);
                             for (int i = page + 1; i <= totalPage; i++) {
                                 getPage(i, serialNumber);
                             }
-                            success = true;
                             printListInfo();
                             if (!inited) {
                                 inited = true;
                                 robotService.send("监控初始化成功");
                             }
+                            tryTimes = 0;
                         } catch (Exception e) {
-                            log.error("程序发生异常[{}]", e.getMessage());
+                            if (++tryTimes > 3) {
+                                log.error("程序异常[{}],超出重试次数,正在停止", e.getMessage());
+                                break;
+                            }
+                            log.error("程序发生异常[{}],正在进行第[{}]次尝试", e.getMessage(), tryTimes);
                             e.printStackTrace();
                             Thread.sleep(10000);
-                        }
-                        if (!success && ++tryTimes > 3) {
-                            break;
                         }
                         Thread.sleep(1000);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                String msg = "程序失败次数过多，停止检测";
-                log.error(msg);
-                robotService.sendRestartCard(msg);
+                robotService.sendRestartCard("监控程序异常终止，请尝试重新启动");
                 onMonitor.set(false);
             }else{
                 String msg = "程序正在监控中，请勿重复监控";
-                log.error(msg);
+                log.info(msg);
                 robotService.sendRestartCard(msg);
             }
         });
