@@ -173,14 +173,17 @@ public class MonitorServiceImpl {
             }
         }else{
             SkuInfo existSku = listSkuStatus.get(skuId);
+            Integer oldSerialNumber = existSku.getSerialNumber();
             String oldDesc = existSku.getDesc();
             String oldWPrice = existSku.getWPrice();
-            if (!Objects.equals(oldDesc, desc) || !Objects.equals(oldWPrice, wPrice)){
+            if (!Objects.equals(oldDesc, desc)
+                    || !Objects.equals(oldWPrice, wPrice)
+                    || (serialNumber - oldSerialNumber) > 1) {
                 log.info("商品[{}]状态变更[{}]", skuId, desc);
                 existSku.setDesc(desc);
                 existSku.setWPrice(wPrice);
                 existSku.setSerialNumber(serialNumber);
-                if ("有货".equals(desc)){
+                if ("有货".equals(desc)) {
                     robotService.send(buildMsg(newSkuInfo, "诚至诚商品变更提示"));
                 }
             }
