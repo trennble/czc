@@ -47,4 +47,11 @@ public class SkuController {
         int size = skuInfos.size();
         return new PageResult<>(1, size, size, 1, sortedSkuInfos);
     }
+
+    @GetMapping("monitor-list")
+    public void monitor(){
+        monitorService.monitorList();
+    }
+
+
 }

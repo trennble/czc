@@ -34,16 +34,16 @@ public class RobotServiceImpl {
         }
     }
 
-    public void sendFail(){
+    public void sendRestartCard(String msg){
         DingTalkClient client = new DefaultDingTalkClient(serverUrl);
         OapiRobotSendRequest request = new OapiRobotSendRequest();
         request.setMsgtype("actionCard");
         OapiRobotSendRequest.Actioncard actioncard = new OapiRobotSendRequest.Actioncard();
         OapiRobotSendRequest.Btns btn = new OapiRobotSendRequest.Btns();
         btn.setTitle("重启");
-        btn.setActionURL("http://www.baidu.com");
+        btn.setActionURL("http://czc.trennble.xyz/sku/monitor-list");
         actioncard.setBtnOrientation("0");
-        actioncard.setText("监控终止，请尝试重启");
+        actioncard.setText(msg);
         actioncard.setBtns(Collections.singletonList(btn));
         OapiRobotSendRequest.At at = new OapiRobotSendRequest.At();
         at.setIsAtAll(true);

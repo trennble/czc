@@ -22,6 +22,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author: jiangbo
@@ -53,7 +54,9 @@ public class MonitorServiceImpl {
 
     private Map<Long, SkuInfo> listSkuStatus = new ConcurrentHashMap<>();
 
-    private Boolean init = true;
+    private Boolean inited = false;
+
+    private AtomicBoolean onMonitor = new AtomicBoolean(false);
 
     public List<SkuInfo> list(String cookie){
         if (!Strings.isBlank(cookie) && !this.cookie.equals(cookie)){
@@ -162,7 +165,7 @@ public class MonitorServiceImpl {
         Integer serialNumber = newSkuInfo.getSerialNumber();
         if (!listSkuStatus.containsKey(skuId)){
             listSkuStatus.put(skuId, newSkuInfo);
-            if (init){
+            if (!inited){
                 log.info("初始化商品[{}]状态[{}]", skuId, desc);
             }else{
                 log.info("新上架商品[{}]状态[{}]", skuId, desc);
@@ -177,7 +180,9 @@ public class MonitorServiceImpl {
                 existSku.setDesc(desc);
                 existSku.setWPrice(wPrice);
                 existSku.setSerialNumber(serialNumber);
-                robotService.send(buildMsg(newSkuInfo));
+                if ("有货".equals(desc)){
+                    robotService.send(buildMsg(newSkuInfo));
+                }
             }
         }
     }
@@ -204,37 +209,45 @@ public class MonitorServiceImpl {
     public void monitorList() {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
-            int tryTimes = 0;
-            int serialNumber = 0;
-            try {
-                while (true) {
-                    boolean success = false;
-                    try {
-                        int page = 1;
-                        int totalPage = getPage(page, serialNumber);
-                        for (int i = page + 1; i <= totalPage; i++) {
-                            getPage(i, serialNumber);
+            if (onMonitor.compareAndSet(false, true)){
+                int tryTimes = 0;
+                int serialNumber = 0;
+                try {
+                    while (true) {
+                        boolean success = false;
+                        try {
+                            int page = 1;
+                            int totalPage = getPage(page, serialNumber);
+                            for (int i = page + 1; i <= totalPage; i++) {
+                                getPage(i, serialNumber);
+                            }
+                            success = true;
+                            printListInfo();
+                            if (!inited) {
+                                inited = true;
+                                robotService.send("监控初始化成功");
+                            }
+                        } catch (Exception e) {
+                            log.error("程序发生异常[{}]", e.getMessage());
+                            e.printStackTrace();
+                            Thread.sleep(10000);
                         }
-                        success = true;
-                        printListInfo();
-                        if (init) {
-                            init = false;
-                            robotService.send("监控初始化成功");
+                        if (!success && ++tryTimes > 3) {
+                            break;
                         }
-                    } catch (Exception e) {
-                        log.error("程序发生异常[{}]", e.getMessage());
-                        e.printStackTrace();
-                        Thread.sleep(10000);
+                        Thread.sleep(1000);
                     }
-                    if (!success && ++tryTimes > 3) {
-                        break;
-                    }
-                    Thread.sleep(1000);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-                log.error("重试次数过多，停止检测");
-                robotService.sendFail();
-            } catch (InterruptedException interruptedException) {
-                interruptedException.printStackTrace();
+                String msg = "程序失败次数过多，停止检测";
+                log.error(msg);
+                robotService.sendRestartCard(msg);
+                onMonitor.set(false);
+            }else{
+                String msg = "程序正在监控中，请勿重复监控";
+                log.error(msg);
+                robotService.sendRestartCard(msg);
             }
         });
     }
