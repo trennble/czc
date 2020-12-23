@@ -1,5 +1,6 @@
 package com.lj.czc.pojo;
 
+import com.lj.czc.vo.SkuInfoDto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -42,6 +43,18 @@ public class SkuInfo {
         this.lastUpdateTs = System.currentTimeMillis();
     }
 
+    public static SkuInfo generate(SkuInfoDto skuInfoDto, Integer serialNumber) {
+        SkuInfo skuInfo = new SkuInfo();
+        skuInfo.skuId = skuInfoDto.getSkuId();
+        skuInfo.name = skuInfoDto.getWareName();
+        skuInfo.desc = skuInfoDto.getStockInfo().getDesc();
+        skuInfo.hPrice = skuInfoDto.getHPrice();
+        skuInfo.wPrice = skuInfoDto.getWPrice();
+        skuInfo.serialNumber = serialNumber;
+        skuInfo.lastUpdateTs = System.currentTimeMillis();
+        return skuInfo;
+    }
+
     public void setWPrice(String wPrice){
         this.wPrice = wPrice;
         this.lastUpdateTs = System.currentTimeMillis();
@@ -49,6 +62,11 @@ public class SkuInfo {
 
     public void setDesc(String desc){
         this.desc = desc;
+        this.lastUpdateTs = System.currentTimeMillis();
+    }
+
+    public void setSerialNumber(Integer serialNumber){
+        this.serialNumber = serialNumber;
         this.lastUpdateTs = System.currentTimeMillis();
     }
 }

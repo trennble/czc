@@ -39,6 +39,17 @@ public class MonitorServiceImpl {
     @Value("${skus}")
     private List<String> skus;
 
+    /**
+     * 屏蔽的品牌
+     */
+    @Value("${block-brand}")
+    private List<String> blockBrand;
+
+    /**
+     * 屏蔽的商品
+     */
+    private Set<Long> blockSku = new HashSet<>();
+
     @Value("${cookie}")
     private String cookie;
 
@@ -56,7 +67,7 @@ public class MonitorServiceImpl {
 
     private Boolean inited = false;
 
-    private AtomicBoolean onMonitor = new AtomicBoolean(false);
+    private final AtomicBoolean onMonitor = new AtomicBoolean(false);
 
     public List<SkuInfo> list(String cookie){
         if (!Strings.isBlank(cookie) && !this.cookie.equals(cookie)){
@@ -131,14 +142,9 @@ public class MonitorServiceImpl {
                 List<SkuInfoDto> skuInfoDtos = data.getSkuInfoDtos();
                 if (!CollectionUtils.isEmpty(skuInfoDtos)){
                     for (SkuInfoDto skuInfoDto : skuInfoDtos) {
-                        String hPrice = skuInfoDto.getHPrice();
-                        String wPrice = skuInfoDto.getWPrice();
-                        Long skuId = skuInfoDto.getSkuId();
-                        String wareName = skuInfoDto.getWareName();
                         StockInfo stockInfo = skuInfoDto.getStockInfo();
                         if (stockInfo!=null){
-                            String desc = stockInfo.getDesc();
-                            SkuInfo newSkuInfo = new SkuInfo(skuId, wareName, desc, hPrice, wPrice, serialNumber);
+                            SkuInfo newSkuInfo = SkuInfo.generate(skuInfoDto, serialNumber);
                             handleSku(newSkuInfo);
                         }
                     }
@@ -163,28 +169,38 @@ public class MonitorServiceImpl {
         Long skuId = newSkuInfo.getSkuId();
         String desc = newSkuInfo.getDesc();
         Integer serialNumber = newSkuInfo.getSerialNumber();
-        if (!listSkuStatus.containsKey(skuId)){
-            listSkuStatus.put(skuId, newSkuInfo);
-            if (!inited){
-                log.info("初始化商品[{}]状态[{}]", skuId, desc);
-            }else{
-                log.info("新上架商品[{}]状态[{}]", skuId, desc);
-                robotService.send(buildMsg(newSkuInfo, "诚至诚商品上架提示"));
-            }
-        }else{
-            SkuInfo existSku = listSkuStatus.get(skuId);
-            Integer oldSerialNumber = existSku.getSerialNumber();
-            String oldDesc = existSku.getDesc();
-            String oldWPrice = existSku.getWPrice();
-            if (!Objects.equals(oldDesc, desc)
-                    || !Objects.equals(oldWPrice, wPrice)
-                    || (serialNumber - oldSerialNumber) > 1) {
-                log.info("商品[{}]状态变更[{}]", skuId, desc);
-                existSku.setDesc(desc);
-                existSku.setWPrice(wPrice);
-                existSku.setSerialNumber(serialNumber);
-                if ("有货".equals(desc)) {
-                    robotService.send(buildMsg(newSkuInfo, "诚至诚商品变更提示"));
+        if (!blockSku.contains(skuId)) {
+            if (!listSkuStatus.containsKey(skuId)) {
+                // 新商品
+                for (String brand : blockBrand) {
+                    if (newSkuInfo.getName().contains(brand)) {
+                        blockSku.add(skuId);
+                        return;
+                    }
+                }
+                listSkuStatus.put(skuId, newSkuInfo);
+                if (!inited) {
+                    log.info("初始化商品[{}]状态[{}]", skuId, desc);
+                } else {
+                    log.info("新上架商品[{}]状态[{}]", skuId, desc);
+                    robotService.send(buildMsg(newSkuInfo, "诚至诚商品上架提示"));
+                }
+            } else {
+                // 已有的商品
+                SkuInfo existSku = listSkuStatus.get(skuId);
+                Integer oldSerialNumber = existSku.getSerialNumber();
+                String oldDesc = existSku.getDesc();
+                String oldWPrice = existSku.getWPrice();
+                if (!Objects.equals(oldDesc, desc)
+                        || !Objects.equals(oldWPrice, wPrice)
+                        || (serialNumber - oldSerialNumber) > 1) {
+                    log.info("商品[{}]状态变更[{}]", skuId, desc);
+                    existSku.setDesc(desc);
+                    existSku.setWPrice(wPrice);
+                    existSku.setSerialNumber(serialNumber);
+                    if ("有货".equals(desc)) {
+                        robotService.send(buildMsg(newSkuInfo, "诚至诚商品变更提示"));
+                    }
                 }
             }
         }
