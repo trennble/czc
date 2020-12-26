@@ -16,9 +16,10 @@ import java.util.Collections;
 public class RobotServiceImpl {
 
     public static final String serverUrl = "https://oapi.dingtalk.com/robot/send?access_token=bdbcb8673d95f1eb2d2287f7861d28655d2ecda5943202fe335a0b2b203f81ca";
+    public static final String robot_v2 = "https://oapi.dingtalk.com/robot/send?access_token=69b742fa784536ef70687e4571122b5b9fbff682d7ba590282f2c917e2fa3a9a";
 
     public void send(String msg){
-        DingTalkClient client = new DefaultDingTalkClient(serverUrl);
+        DingTalkClient client = new DefaultDingTalkClient(robot_v2);
         OapiRobotSendRequest request = new OapiRobotSendRequest();
         request.setMsgtype("text");
         OapiRobotSendRequest.Text text = new OapiRobotSendRequest.Text();
@@ -32,7 +33,7 @@ public class RobotServiceImpl {
     }
 
     public void sendRestartCard(String msg){
-        DingTalkClient client = new DefaultDingTalkClient(serverUrl);
+        DingTalkClient client = new DefaultDingTalkClient(robot_v2);
         OapiRobotSendRequest request = new OapiRobotSendRequest();
         request.setMsgtype("actionCard");
         OapiRobotSendRequest.Actioncard actioncard = new OapiRobotSendRequest.Actioncard();

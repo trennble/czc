@@ -25,6 +25,8 @@ public class Sku {
     private String hPrice;
     // 批发价格
     private String wPrice;
+    // 通知价格 默认为wPrice
+    private String notifyPrice;
     // 上次更新时间
     private Long lastUpdateTs;
     // 序列号，标志当前商品第几次爬去
@@ -37,16 +39,6 @@ public class Sku {
         this.lastUpdateTs = System.currentTimeMillis();
     }
 
-    public Sku(String skuId, String name, String desc, String hPrice, String wPrice, Integer serialNumber) {
-        this.skuId = skuId;
-        this.name = name;
-        this.desc = desc;
-        this.hPrice = hPrice;
-        this.wPrice = wPrice;
-        this.serialNumber = serialNumber;
-        this.lastUpdateTs = System.currentTimeMillis();
-    }
-
     public static Sku generate(SkuInfoDto skuInfoDto, Integer serialNumber) {
         Sku sku = new Sku();
         sku.skuId = String.valueOf(skuInfoDto.getSkuId());
@@ -54,6 +46,7 @@ public class Sku {
         sku.desc = skuInfoDto.getStockInfo().getDesc();
         sku.hPrice = skuInfoDto.getHPrice();
         sku.wPrice = skuInfoDto.getWPrice();
+        sku.notifyPrice = skuInfoDto.getWPrice();
         sku.serialNumber = serialNumber;
         sku.lastUpdateTs = System.currentTimeMillis();
         return sku;

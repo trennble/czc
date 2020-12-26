@@ -144,7 +144,7 @@ public class MonitorServiceImpl {
                         || (serialNumber - oldSerialNumber) > 1) {
                     log.info("商品[{}]状态变更[{}]", skuId, desc);
                     skuService.save(newSku);
-                    if ("有货".equals(desc)) {
+                    if ("有货".equals(desc) && Double.parseDouble(wPrice) <= Double.parseDouble(newSku.getNotifyPrice())) {
                         robotService.send(buildMsg(newSku, "诚至诚商品变更提示"));
                     }
                 }

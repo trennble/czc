@@ -11,9 +11,9 @@ import java.util.List;
 @Data
 public class DingRequestBody {
     private String msgtype;
-    private String content;
+    private Text text;
     private String msgId;
-    private String createAt;
+    private Long createAt;
     private String conversationType;
     private String conversationId;
     private String conversationTitle;
@@ -22,5 +22,16 @@ public class DingRequestBody {
     private String senderCorpId;
     private String senderStaffId;
     private String chatbotUserId;
-    private List<String> atUsers;
+    private List<AtUser> atUsers;
+
+    @Data
+    public static class AtUser{
+        private String dingtalkId;
+        private String staffId;
+    }
+
+    @Data
+    public static class Text {
+        private String content;
+    }
 }
