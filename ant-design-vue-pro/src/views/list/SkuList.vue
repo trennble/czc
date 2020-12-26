@@ -6,7 +6,7 @@
           <a-row :gutter="48">
             <a-col :md="16" :sm="24">
               <a-form-item label="cookie">
-                <a-input v-model="queryParam.cookie" placeholder=""/>
+                <a-input v-model="queryParam.cookie" placeholder="" />
               </a-form-item>
             </a-col>
             <a-col :md="(!advanced && 8) || 24" :sm="24">
@@ -31,7 +31,6 @@
         :rowSelection="rowSelection"
         showPagination="auto"
         :pageSize="200"
-        :localDataSource="localDataSource"
       >
         <span slot="serial" slot-scope="text, record, index">
           {{ index + 1 }}
@@ -41,6 +40,9 @@
         </span>
         <span slot="description" slot-scope="text">
           <ellipsis :length="40" tooltip>{{ text }}</ellipsis>
+        </span>
+        <span slot="notifyPrice" slot-scope="text, record">
+          <a-input style="margin: -5px 0" :value="text" @blur="(e) => handleChange(e.target.value, record.skuId)" />
         </span>
       </s-table>
 
@@ -69,53 +71,58 @@ import request from '@/utils/request'
 const columns = [
   {
     title: '#',
-    scopedSlots: { customRender: 'serial' }
+    scopedSlots: { customRender: 'serial' },
   },
   {
     title: 'ID',
-    dataIndex: 'skuId'
+    dataIndex: 'skuId',
   },
   {
     title: '名称',
     dataIndex: 'name',
-    scopedSlots: { customRender: 'description' }
+    scopedSlots: { customRender: 'description' },
   },
   {
     title: '状态',
-    dataIndex: 'desc'
+    dataIndex: 'desc',
   },
   {
     title: '京东价格',
-    dataIndex: 'hprice'
+    dataIndex: 'hprice',
   },
   {
     title: '批发价格',
-    dataIndex: 'wprice'
+    dataIndex: 'wprice',
+  },
+  {
+    title: '提醒价格',
+    dataIndex: 'notifyPrice',
+    scopedSlots: { customRender: 'notifyPrice' },
   },
   {
     title: '更新时间',
     dataIndex: 'lastUpdateTs',
-    customRender: (ts) => Math.round((new Date().getTime() - ts) / 1000) + '秒前'
-  }
+    customRender: (ts) => moment(ts).format('YYYY-MM-DD HH:mm:ss'),
+  },
 ]
 
 const statusMap = {
   0: {
     status: 'default',
-    text: '关闭'
+    text: '关闭',
   },
   1: {
     status: 'processing',
-    text: '运行中'
+    text: '运行中',
   },
   2: {
     status: 'success',
-    text: '已上线'
+    text: '已上线',
   },
   3: {
     status: 'error',
-    text: '异常'
-  }
+    text: '异常',
+  },
 }
 
 export default {
@@ -124,9 +131,9 @@ export default {
     STable,
     Ellipsis,
     CreateForm,
-    StepByStepModal
+    StepByStepModal,
   },
-  data () {
+  data() {
     this.columns = columns
     return {
       // create model
@@ -135,7 +142,6 @@ export default {
       mdl: null,
       // 高级搜索 展开/关闭
       advanced: false,
-      localDataSource: { data: [] },
       // 查询参数
       queryParam: {},
       lastUpdateTs: null,
@@ -145,78 +151,100 @@ export default {
         return request({
           url: '/sku/list',
           method: 'get',
-          params: requestParameters
-        }).then((res) => {
-          return res.result
-        }).catch((err) => {
-          console.log(err)
+          params: requestParameters,
         })
+          .then((res) => {
+            return res.result
+          })
+          .catch((err) => {
+            console.log(err)
+          })
       },
       selectedRowKeys: [],
-      selectedRows: []
+      selectedRows: [],
     }
   },
   filters: {
-    statusFilter (type) {
+    statusFilter(type) {
       return statusMap[type].text
     },
-    statusTypeFilter (type) {
+    statusTypeFilter(type) {
       return statusMap[type].status
-    }
+    },
   },
-  created () {
+  created() {
     getRoleList({ t: new Date() })
   },
-  mounted () {
+  mounted() {
     this.handleQuery(this.queryParam)
   },
   computed: {
-    rowSelection () {
+    rowSelection() {
       return {
         selectedRowKeys: this.selectedRowKeys,
-        onChange: this.onSelectChange
+        onChange: this.onSelectChange,
       }
-    }
+    },
   },
   methods: {
-    handleQuery (queryParam) {
+    handleChange(value, skuId) {
       const that = this
-      const query = () => {
-        return request({
-          url: '/sku/list',
-          method: 'get',
-          params: queryParam
-        }).then((res) => {
-          that.$refs.table.setDataSource(res.result)
+      const param = { skuId: skuId, notifyPrice: value }
+      request({
+        url: '/sku/price-notify',
+        method: 'put',
+        params: param,
+      }).then((res) => {
+          console.log(res)
+        })
+        .catch((err) => {
+          console.log(err)
+        })
+    },
+    handleQuery(queryParam) {
+      const param = Object.assign({}, { loop: false }, queryParam)
+      const that = this
+      that.query(queryParam)
+    },
+    query(queryParam) {
+      const that = this
+      return request({
+        url: '/sku/list',
+        method: 'get',
+        params: queryParam,
+      })
+        .then((res) => {
           const newTs = res.result.data[0].lastUpdateTs
           if (that.lastUpdateTs == null) {
             that.lastUpdateTs = newTs
           }
           if (that.lastUpdateTs < newTs) {
+            that.$refs.table.setDataSource(res.result)
             that.lastUpdateTs = newTs
             that.playAudio()
           }
-          setTimeout(() => {
-            query()
-          }, 1000)
-        }).catch((err) => {
+          if (queryParam.loop) {
+            setTimeout(() => {
+              query(queryParam)
+            }, 1000)
+          }
+        })
+        .catch((err) => {
           console.log(err)
         })
-      }
-      query(queryParam)
     },
-    playAudio () {
+    playAudio() {
       document.getElementById('music').play()
     },
-    handleAdd () {
+    handleAdd() {
       this.mdl = null
       this.visible = true
     },
-    handleEdit (record) {
+    handleEdit(record) {
       this.visible = true
       this.mdl = { ...record }
     },
-    handleOk () {
+    handleOk() {
       const form = this.$refs.createModal.form
       this.confirmLoading = true
       form.validateFields((errors, values) => {
@@ -260,31 +288,31 @@ export default {
         }
       })
     },
-    handleCancel () {
+    handleCancel() {
       this.visible = false
 
       const form = this.$refs.createModal.form
       form.resetFields() // 清理表单数据（可不做）
     },
-    handleSub (record) {
+    handleSub(record) {
       if (record.status !== 0) {
         this.$message.info(`${record.no} 订阅成功`)
       } else {
         this.$message.error(`${record.no} 订阅失败，规则已关闭`)
       }
     },
-    onSelectChange (selectedRowKeys, selectedRows) {
+    onSelectChange(selectedRowKeys, selectedRows) {
       this.selectedRowKeys = selectedRowKeys
       this.selectedRows = selectedRows
     },
-    toggleAdvanced () {
+    toggleAdvanced() {
       this.advanced = !this.advanced
     },
-    resetSearchForm () {
+    resetSearchForm() {
       this.queryParam = {
-        date: moment(new Date())
+        date: moment(new Date()),
       }
-    }
-  }
+    },
+  },
 }
 </script>
