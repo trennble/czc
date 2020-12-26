@@ -2,7 +2,7 @@ package com.lj.czc.util;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.extra.mail.MailUtil;
-import com.lj.czc.pojo.SkuInfo;
+import com.lj.czc.pojo.bean.Sku;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,17 +22,17 @@ public class EmailUtil {
     public static List<String> admin = CollUtil.newArrayList("329863004@qq.com");
 
 
-    public static void sendStatusChange(SkuInfo skuInfo) {
-        String url = String.format(SKU_URL, skuInfo.getSkuId());
+    public static void sendStatusChange(Sku sku) {
+        String url = String.format(SKU_URL, sku.getSkuId());
         ArrayList<String> receivers = new ArrayList<>();
         receivers.addAll(user);
         receivers.addAll(admin);
         MailUtil.send(receivers, "诚至诚商品库存变更提示",
-                "商品id：" + skuInfo.getSkuId() + "\n" +
-                        "商品名称：" + skuInfo.getName() + "\n" +
-                        "商品状态：" + skuInfo.getDesc() + "\n" +
-                        "京东价格：" + skuInfo.getHPrice() + "\n" +
-                        "批发价格：" + skuInfo.getWPrice() + "\n" +
+                "商品id：" + sku.getSkuId() + "\n" +
+                        "商品名称：" + sku.getName() + "\n" +
+                        "商品状态：" + sku.getDesc() + "\n" +
+                        "京东价格：" + sku.getHPrice() + "\n" +
+                        "批发价格：" + sku.getWPrice() + "\n" +
                         "商品链接：" + url, false);
     }
 

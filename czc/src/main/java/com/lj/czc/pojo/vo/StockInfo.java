@@ -1,4 +1,4 @@
-package com.lj.czc.vo;
+package com.lj.czc.pojo.vo;
 
 import lombok.Data;
 

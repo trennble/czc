@@ -3,13 +3,10 @@ package com.lj.czc.service;
 import com.dingtalk.api.DefaultDingTalkClient;
 import com.dingtalk.api.DingTalkClient;
 import com.dingtalk.api.request.OapiRobotSendRequest;
-import com.lj.czc.pojo.SkuInfo;
 import com.taobao.api.ApiException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-
-import static com.lj.czc.service.MonitorServiceImpl.SKU_URL;
 
 /**
  * @author: jiangbo

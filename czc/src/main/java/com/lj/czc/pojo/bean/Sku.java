@@ -1,8 +1,11 @@
-package com.lj.czc.pojo;
+package com.lj.czc.pojo.bean;
 
-import com.lj.czc.vo.SkuInfoDto;
+import com.lj.czc.pojo.vo.SkuInfoDto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+
+import java.math.BigInteger;
 
 /**
  * @author: jiangbo
@@ -10,9 +13,10 @@ import lombok.NoArgsConstructor;
  **/
 @Data
 @NoArgsConstructor
-public class SkuInfo {
+public class Sku {
     // 商品id
-    private Long skuId;
+    @Id
+    private String skuId;
     // 商品名称
     private String name;
     // 商品状态
@@ -26,14 +30,14 @@ public class SkuInfo {
     // 序列号，标志当前商品第几次爬去
     private Integer serialNumber;
 
-    public SkuInfo(Long skuId, String name, String desc) {
+    public Sku(String skuId, String name, String desc) {
         this.skuId = skuId;
         this.name = name;
         this.desc = desc;
         this.lastUpdateTs = System.currentTimeMillis();
     }
 
-    public SkuInfo(Long skuId, String name, String desc, String hPrice, String wPrice, Integer serialNumber) {
+    public Sku(String skuId, String name, String desc, String hPrice, String wPrice, Integer serialNumber) {
         this.skuId = skuId;
         this.name = name;
         this.desc = desc;
@@ -43,16 +47,16 @@ public class SkuInfo {
         this.lastUpdateTs = System.currentTimeMillis();
     }
 
-    public static SkuInfo generate(SkuInfoDto skuInfoDto, Integer serialNumber) {
-        SkuInfo skuInfo = new SkuInfo();
-        skuInfo.skuId = skuInfoDto.getSkuId();
-        skuInfo.name = skuInfoDto.getWareName();
-        skuInfo.desc = skuInfoDto.getStockInfo().getDesc();
-        skuInfo.hPrice = skuInfoDto.getHPrice();
-        skuInfo.wPrice = skuInfoDto.getWPrice();
-        skuInfo.serialNumber = serialNumber;
-        skuInfo.lastUpdateTs = System.currentTimeMillis();
-        return skuInfo;
+    public static Sku generate(SkuInfoDto skuInfoDto, Integer serialNumber) {
+        Sku sku = new Sku();
+        sku.skuId = String.valueOf(skuInfoDto.getSkuId());
+        sku.name = skuInfoDto.getWareName();
+        sku.desc = skuInfoDto.getStockInfo().getDesc();
+        sku.hPrice = skuInfoDto.getHPrice();
+        sku.wPrice = skuInfoDto.getWPrice();
+        sku.serialNumber = serialNumber;
+        sku.lastUpdateTs = System.currentTimeMillis();
+        return sku;
     }
 
     public void setWPrice(String wPrice){

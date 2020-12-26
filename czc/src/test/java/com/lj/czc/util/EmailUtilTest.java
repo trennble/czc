@@ -1,6 +1,6 @@
 package com.lj.czc.util;
 
-import com.lj.czc.pojo.SkuInfo;
+import com.lj.czc.pojo.bean.Sku;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -11,6 +11,6 @@ public class EmailUtilTest {
 
     @Test
     public void testSendEmail(){
-        EmailUtil.sendStatusChange(new SkuInfo(10001L, "测试商品名称", "测试状态"));
+        EmailUtil.sendStatusChange(new Sku("10001", "测试商品名称", "测试状态"));
     }
 }

@@ -3,10 +3,10 @@ package com.lj.czc.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
-import com.lj.czc.vo.ListDataVo;
-import com.lj.czc.vo.SkuInfoDto;
-import com.lj.czc.vo.StockInfo;
-import com.lj.czc.pojo.SkuInfo;
+import com.lj.czc.pojo.vo.ListDataVo;
+import com.lj.czc.pojo.vo.SkuInfoDto;
+import com.lj.czc.pojo.vo.StockInfo;
+import com.lj.czc.pojo.bean.Sku;
 import com.lj.czc.util.EmailUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
@@ -35,10 +35,6 @@ public class MonitorServiceImpl {
     public static final String LIST_URL = "https://jingli-server-c.jd.com/fuli/search/searchList?page=%s&cat=653-655";
     public static final String SKU_URL = "https://jingli-server-c.jd.com/fuli/product/detail?productCode=%s&areaIds=22_1930_49324_49398";
 
-
-    @Value("${skus}")
-    private List<String> skus;
-
     /**
      * 屏蔽的品牌
      */
@@ -48,7 +44,7 @@ public class MonitorServiceImpl {
     /**
      * 屏蔽的商品
      */
-    private Set<Long> blockSku = new HashSet<>();
+    private Set<String> blockSku = new HashSet<>();
 
     @Value("${cookie}")
     private String cookie;
@@ -61,62 +57,17 @@ public class MonitorServiceImpl {
     @Autowired
     private RobotServiceImpl robotService;
 
-    private Map<String, String> skuStatus = new ConcurrentHashMap<>();
-
-    private Map<Long, SkuInfo> listSkuStatus = new ConcurrentHashMap<>();
-
-    private Boolean inited = false;
+    @Autowired
+    private SkuServiceImpl skuService;
 
     private final AtomicBoolean onMonitor = new AtomicBoolean(false);
 
-    public List<SkuInfo> list(String cookie){
+    public List<Sku> list(String cookie){
         if (!Strings.isBlank(cookie) && !this.cookie.equals(cookie)){
             this.cookie = cookie;
             log.info(cookie);
         }
-        return new ArrayList<>(listSkuStatus.values());
-    }
-
-    public boolean tryout() {
-        HttpHeaders headers = new HttpHeaders();
-        String cookie = String.format("sam_cookie_activity=%s; activityCode=\"%s\"", this.cookie, CODE);
-        headers.add("cookie", cookie);
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-        for (String sku : skus) {
-            String skuUrl = String.format(SKU_URL, sku);
-            ResponseEntity<String> responseEntity = restTemplate.exchange(skuUrl, HttpMethod.GET, entity, String.class);
-            HttpStatus statusCode = responseEntity.getStatusCode();
-            String body = responseEntity.getBody();
-            if (HttpStatus.OK == statusCode) {
-                try {
-                    JSONObject data = JSONObject.parseObject(body).getJSONObject("data");
-                    String desc = data.getJSONObject("productStockVo").getString("desc");
-                    String name = data.getJSONObject("baseInfo").getString("skuName");
-                    if (!skuStatus.containsKey(sku)){
-                        skuStatus.put(sku, desc);
-                        log.info("初始化商品[{}]状态[{}]", sku, desc);
-                    }else{
-                        String oldDesc = skuStatus.get(sku);
-                        if (!Objects.equals(oldDesc, desc)){
-                            log.info("商品[{}]状态变更[{}]", sku, desc);
-                            skuStatus.put(sku, desc);
-                            EmailUtil.sendStatusChange(new SkuInfo(Long.valueOf(sku), name, desc));
-                        }else{
-                            log.info("商品[{}]监控中，状态[{}]", sku, desc);
-                        }
-                    }
-                }catch (JSONException e){
-                    log.error("url: {}, http status: {}, response body: {}", skuUrl, statusCode.value(), body);
-                    EmailUtil.sendHtml(body);
-                    return false;
-                }
-            } else {
-                log.error("url: {}, http status: {}, response body: {}", skuUrl, statusCode.value(), body);
-                EmailUtil.sendHtml(body);
-                return false;
-            }
-        }
-        return true;
+        return skuService.findAll();
     }
 
     /**
@@ -144,8 +95,8 @@ public class MonitorServiceImpl {
                     for (SkuInfoDto skuInfoDto : skuInfoDtos) {
                         StockInfo stockInfo = skuInfoDto.getStockInfo();
                         if (stockInfo!=null){
-                            SkuInfo newSkuInfo = SkuInfo.generate(skuInfoDto, serialNumber);
-                            handleSku(newSkuInfo);
+                            Sku newSku = Sku.generate(skuInfoDto, serialNumber);
+                            handleSku(newSku);
                         }
                     }
                 }
@@ -162,32 +113,29 @@ public class MonitorServiceImpl {
 
     /**
      * 处理sku逻辑，如果新增，则向列表增加，如果状态更新，则更新列表，并且把更新的列表的序列号和时间更新
-     * @param newSkuInfo
+     * @param newSku
      */
-    private void handleSku(SkuInfo newSkuInfo) {
-        String wPrice = newSkuInfo.getWPrice();
-        Long skuId = newSkuInfo.getSkuId();
-        String desc = newSkuInfo.getDesc();
-        Integer serialNumber = newSkuInfo.getSerialNumber();
+    private void handleSku(Sku newSku) {
+        String wPrice = newSku.getWPrice();
+        String skuId = newSku.getSkuId();
+        String desc = newSku.getDesc();
+        Integer serialNumber = newSku.getSerialNumber();
         if (!blockSku.contains(skuId)) {
-            if (!listSkuStatus.containsKey(skuId)) {
+            Optional<Sku> skuOptional = skuService.findById(skuId);
+            if (!skuOptional.isPresent()) {
                 // 新商品
                 for (String brand : blockBrand) {
-                    if (newSkuInfo.getName().contains(brand)) {
+                    if (newSku.getName().contains(brand)) {
                         blockSku.add(skuId);
                         return;
                     }
                 }
-                listSkuStatus.put(skuId, newSkuInfo);
-                if (!inited) {
-                    log.info("初始化商品[{}]状态[{}]", skuId, desc);
-                } else {
-                    log.info("新上架商品[{}]状态[{}]", skuId, desc);
-                    robotService.send(buildMsg(newSkuInfo, "诚至诚商品上架提示"));
-                }
+                skuService.save(newSku);
+                log.info("新上架商品[{}]状态[{}]", skuId, desc);
+                robotService.send(buildMsg(newSku, "诚至诚商品上架提示"));
             } else {
                 // 已有的商品
-                SkuInfo existSku = listSkuStatus.get(skuId);
+                Sku existSku = skuOptional.get();
                 Integer oldSerialNumber = existSku.getSerialNumber();
                 String oldDesc = existSku.getDesc();
                 String oldWPrice = existSku.getWPrice();
@@ -195,33 +143,13 @@ public class MonitorServiceImpl {
                         || !Objects.equals(oldWPrice, wPrice)
                         || (serialNumber - oldSerialNumber) > 1) {
                     log.info("商品[{}]状态变更[{}]", skuId, desc);
-                    existSku.setDesc(desc);
-                    existSku.setWPrice(wPrice);
-                    existSku.setSerialNumber(serialNumber);
+                    skuService.save(newSku);
                     if ("有货".equals(desc)) {
-                        robotService.send(buildMsg(newSkuInfo, "诚至诚商品变更提示"));
+                        robotService.send(buildMsg(newSku, "诚至诚商品变更提示"));
                     }
                 }
             }
         }
-    }
-
-    // @PostConstruct
-    public void monitorSku() throws InterruptedException {
-        int tryTimes = 0;
-        while (true) {
-            boolean success = false;
-            try {
-                success = tryout();
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-            if (!success && ++tryTimes > 3) {
-                break;
-            }
-            Thread.sleep(1000);
-        }
-        log.error("重试次数过多，停止检测");
     }
 
     @PostConstruct
@@ -231,6 +159,7 @@ public class MonitorServiceImpl {
             if (onMonitor.compareAndSet(false, true)){
                 int tryTimes = 0;
                 int serialNumber = 0;
+                robotService.send("监控程序正在初始化...");
                 try {
                     while (true) {
                         try {
@@ -240,10 +169,6 @@ public class MonitorServiceImpl {
                                 getPage(i, serialNumber);
                             }
                             printListInfo();
-                            if (!inited) {
-                                inited = true;
-                                robotService.send("监控初始化成功");
-                            }
                             tryTimes = 0;
                         } catch (Exception e) {
                             if (++tryTimes > 3) {
@@ -269,35 +194,29 @@ public class MonitorServiceImpl {
         });
     }
 
-    private String buildMsg(SkuInfo skuInfo, String title) {
-        String url = String.format(SKU_URL, skuInfo.getSkuId());
+    private String buildMsg(Sku sku, String title) {
+        String url = String.format(SKU_URL, sku.getSkuId());
         return title + "\n" +
-                "商品id：" + skuInfo.getSkuId() + "\n" +
-                "商品名称：" + skuInfo.getName() + "\n" +
-                "商品状态：" + skuInfo.getDesc() + "\n" +
-                "京东价格：" + skuInfo.getHPrice() + "\n" +
-                "批发价格：" + skuInfo.getWPrice() + "\n" +
+                "商品id：" + sku.getSkuId() + "\n" +
+                "商品名称：" + sku.getName() + "\n" +
+                "商品状态：" + sku.getDesc() + "\n" +
+                "京东价格：" + sku.getHPrice() + "\n" +
+                "批发价格：" + sku.getWPrice() + "\n" +
                 "商品链接：" + url;
     }
 
-    /**
-     * 回滚序列号，如果中途发生了异常，那么回滚这次爬去的数据的序列号，防止序列号不一致
-     */
-    private void rollBackSerialNumber(){
-
-    }
-
     private void printListInfo(){
-        Map<String, List<Long>> reversed = new HashMap<>();
-        for (Map.Entry<Long, SkuInfo> entry : listSkuStatus.entrySet()) {
-            String desc = entry.getValue().getDesc();
+        Map<String, List<String>> reversed = new HashMap<>();
+        List<Sku> all = skuService.findAll();
+        for (Sku sku : all) {
+            String desc = sku.getDesc();
             if (reversed.containsKey(desc)) {
-                reversed.get(desc).add(entry.getKey());
+                reversed.get(desc).add(sku.getSkuId());
             } else {
-                reversed.put(desc, new ArrayList<>(Collections.singletonList(entry.getKey())));
+                reversed.put(desc, new ArrayList<>(Collections.singletonList(sku.getSkuId())));
             }
         }
-        log.info("总监控商品数[{}],商品状态[{}]", listSkuStatus.size(), JSON.toJSONString(reversed));
+        log.info("总监控商品数[{}],商品状态[{}]", all.size(), JSON.toJSONString(reversed));
     }
 
 }
