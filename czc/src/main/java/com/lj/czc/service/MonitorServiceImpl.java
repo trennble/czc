@@ -185,7 +185,7 @@ public class MonitorServiceImpl {
     /**
      * 监控新商品，通过商品列表去监控新上架商品
      */
-    // @PostConstruct
+    @PostConstruct
     public void monitorNewItem() {
         loopExecAndRetry("新商品监控", monitorNew, () -> {
             int page = 1;
@@ -230,7 +230,7 @@ public class MonitorServiceImpl {
     /**
      * 通过购物车列表监控商品状态（价格，是否可买）
      */
-    // @PostConstruct
+    @PostConstruct
     public void monitorPrice() {
         loopExecAndRetry("商品价格监控", monitorPrice, () -> {
             updateSkuByFromCart();
