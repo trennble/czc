@@ -1,14 +1,12 @@
 package com.lj.czc.controller;
 
 import com.lj.czc.common.PageResult;
+import com.lj.czc.pojo.vo.SkuVo;
 import com.lj.czc.service.MonitorServiceImpl;
 import com.lj.czc.pojo.bean.Sku;
 import com.lj.czc.service.SkuServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Comparator;
 import java.util.List;
@@ -31,12 +29,11 @@ public class SkuController {
 
     /**
      * 商品列表
-     * @param cookie 用户指定的cookie，在系统默认的cookie失效时使用
      * @return
      */
     @GetMapping("list")
-    public PageResult<Sku> list(String cookie){
-        List<Sku> skus = monitorService.list(cookie);
+    public PageResult<Sku> list(){
+        List<Sku> skus = skuService.findAll();
         List<Sku> sortedSkus = skus.stream()
                 .sorted(Comparator.comparingInt(Sku::getSerialNumber).thenComparingLong(Sku::getLastUpdateTs).reversed())
                 .collect(toList());
@@ -45,11 +42,19 @@ public class SkuController {
     }
 
     /**
-     * 手动触发商品监控
+     * 手动触发新商品监控
      */
     @GetMapping("monitor-list")
-    public void monitor(){
-        monitorService.monitorList();
+    public void monitorList(){
+        monitorService.monitorNewItem();
+    }
+
+    /**
+     * 手动触发商品价格监控
+     */
+    @GetMapping("monitor-price")
+    public void monitorPrice(){
+        monitorService.monitorPrice();
     }
 
     /**
@@ -62,6 +67,33 @@ public class SkuController {
         Sku sku = skuService.findById(skuId).orElseThrow(() -> new RuntimeException("没有找到对应的商品ID"));
         sku.setNotifyPrice(notifyPrice);
         skuService.save(sku);
+    }
+
+    /**
+     * 添加购物车
+     */
+    @PostMapping("add-cart")
+    public void addCart(){
+        monitorService.addToCart();
+    }
+
+    /**
+     * 添加购物车
+     * @return
+     */
+    @GetMapping("cart-list")
+    public List<SkuVo> cartList(){
+        return monitorService.cartList();
+    }
+
+
+    /**
+     * 添加购物车
+     * @return
+     */
+    @GetMapping("init-spu")
+    public void initSpuId(){
+        monitorService.initSpuId();
     }
 
 

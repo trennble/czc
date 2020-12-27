@@ -6,6 +6,7 @@ import com.dingtalk.api.request.OapiRobotSendRequest;
 import com.taobao.api.ApiException;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 /**
@@ -37,12 +38,15 @@ public class RobotServiceImpl {
         OapiRobotSendRequest request = new OapiRobotSendRequest();
         request.setMsgtype("actionCard");
         OapiRobotSendRequest.Actioncard actioncard = new OapiRobotSendRequest.Actioncard();
+        OapiRobotSendRequest.Btns newBtn = new OapiRobotSendRequest.Btns();
+        newBtn.setTitle("重启新品监控");
+        newBtn.setActionURL("http://czc.trennble.xyz/api/sku/monitor-list");
         OapiRobotSendRequest.Btns btn = new OapiRobotSendRequest.Btns();
-        btn.setTitle("重启");
-        btn.setActionURL("http://czc.trennble.xyz/sku/monitor-list");
+        btn.setTitle("重启价格监控");
+        btn.setActionURL("http://czc.trennble.xyz/api/sku/monitor-price");
         actioncard.setBtnOrientation("0");
         actioncard.setText(msg);
-        actioncard.setBtns(Collections.singletonList(btn));
+        actioncard.setBtns(Arrays.asList(btn, newBtn));
         OapiRobotSendRequest.At at = new OapiRobotSendRequest.At();
         at.setIsAtAll(true);
         request.setAt(at);

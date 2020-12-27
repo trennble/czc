@@ -5,6 +5,7 @@ import com.lj.czc.repo.SkuRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,5 +29,17 @@ public class SkuServiceImpl {
 
     public Sku save(Sku sku){
         return skuRepository.save(sku);
+    }
+
+    public List<Sku> saveAll(List<Sku> sku){
+        return skuRepository.saveAll(sku);
+    }
+
+    public List<Sku> findAllById(List<String> skuIds){
+        ArrayList<Sku> skus = new ArrayList<>();
+        for (Sku sku : skuRepository.findAllById(skuIds)) {
+            skus.add(sku);
+        }
+        return skus;
     }
 }

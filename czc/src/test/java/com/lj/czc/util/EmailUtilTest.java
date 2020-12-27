@@ -11,6 +11,5 @@ public class EmailUtilTest {
 
     @Test
     public void testSendEmail(){
-        EmailUtil.sendStatusChange(new Sku("10001", "测试商品名称", "测试状态"));
     }
 }
