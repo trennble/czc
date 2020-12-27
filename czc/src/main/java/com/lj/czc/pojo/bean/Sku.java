@@ -39,7 +39,7 @@ public class Sku {
     // 上次更新时间
     private Long lastUpdateTs;
     // 序列号，标志当前商品第几次爬去
-    private Integer serialNumber;
+    // private Integer serialNumber;
     // 关联的sku商品id
     private List<String> similarSkus;
 

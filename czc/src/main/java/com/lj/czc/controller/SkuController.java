@@ -35,7 +35,7 @@ public class SkuController {
     public PageResult<Sku> list(){
         List<Sku> skus = skuService.findAll();
         List<Sku> sortedSkus = skus.stream()
-                .sorted(Comparator.comparingInt(Sku::getSerialNumber).thenComparingLong(Sku::getLastUpdateTs).reversed())
+                .sorted(Comparator.comparingLong(Sku::getLastUpdateTs).reversed())
                 .collect(toList());
         int size = skus.size();
         return new PageResult<Sku>(1, size, size, 1, sortedSkus);
