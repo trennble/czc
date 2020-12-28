@@ -12,10 +12,17 @@ export const asyncRouterMap = [
       // welcome
       {
         path: '/',
-        name: 'TableListWrapper',
+        name: 'NotifyListWrapper',
+        hideChildrenInMenu: true, // 强制显示 MenuItem 而不是 SubMenu
+        component: () => import('@/views/list/NotifyList'),
+        meta: { title: 'menu.list.notify-list', icon: 'user', keepAlive: true, permission: ['table'] }
+      },
+      {
+        path: '/sku',
+        name: 'SkuListWrapper',
         hideChildrenInMenu: true, // 强制显示 MenuItem 而不是 SubMenu
         component: () => import('@/views/list/SkuList'),
-        meta: { title: 'menu.list.table-list', icon: 'user', keepAlive: true, permission: ['table'] }
+        meta: { title: 'menu.list.sku-list', icon: 'user', keepAlive: true, permission: ['table'] }
       }
       // // dashboard
       // {

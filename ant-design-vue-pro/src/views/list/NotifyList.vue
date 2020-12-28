@@ -1,6 +1,26 @@
 <template>
   <page-header-wrapper>
     <a-card :bordered="false">
+      <div class="table-page-search-wrapper">
+        <a-form layout="inline">
+          <a-row :gutter="48">
+            <a-col :md="16" :sm="24">
+              <a-form-item label="cookie">
+                <a-input v-model="queryParam.cookie" placeholder="" />
+              </a-form-item>
+            </a-col>
+            <a-col :md="(!advanced && 8) || 24" :sm="24">
+              <span
+                class="table-page-search-submitButtons"
+                :style="(advanced && { float: 'right', overflow: 'hidden' }) || {}"
+              >
+                <a-button type="primary" @click="handleQuery">查询</a-button>
+              </span>
+            </a-col>
+          </a-row>
+        </a-form>
+      </div>
+      <audio id="music" src="@/assets/8855.mp3"></audio>
       <s-table
         ref="table"
         size="default"
@@ -20,9 +40,6 @@
         </span>
         <span slot="description" slot-scope="text">
           <ellipsis :length="40" tooltip>{{ text }}</ellipsis>
-        </span>
-        <span slot="sellPrice" slot-scope="text, record">
-          <a-input style="margin: -5px 0" :value="text" @blur="(e) => handleChange(e.target.value, record)" />
         </span>
       </s-table>
 
@@ -67,21 +84,12 @@ const columns = [
     dataIndex: 'desc',
   },
   {
-    title: '京东价格',
-    dataIndex: 'hprice',
-  },
-  {
     title: '批发价格',
     dataIndex: 'wprice',
   },
   {
     title: '提醒价格',
     dataIndex: 'notifyPrice',
-  },
-  {
-    title: '出货价格',
-    dataIndex: 'sellPrice',
-    scopedSlots: { customRender: 'sellPrice' },
   },
   {
     title: '更新时间',
@@ -128,13 +136,12 @@ export default {
       advanced: false,
       // 查询参数
       queryParam: {},
-      moutai: null,
-      profit: null,
+      lastUpdateTs: null,
       // 加载数据方法 必须为 Promise 对象
       loadData: (parameter) => {
         const requestParameters = Object.assign({}, parameter, this.queryParam)
         return request({
-          url: '/sku/list?sort=true',
+          url: '/sku/list',
           method: 'get',
           params: requestParameters,
         })
@@ -160,6 +167,9 @@ export default {
   created() {
     getRoleList({ t: new Date() })
   },
+  mounted() {
+    this.handleQuery(this.queryParam)
+  },
   computed: {
     rowSelection() {
       return {
@@ -168,54 +178,49 @@ export default {
       }
     },
   },
-  mounted() {
-    this.getConfig()
-  },
   methods: {
-    getConfig() {
+    handleChange(value, skuId) {
       const that = this
-      return request({
-        url: '/config/map',
-        method: 'get',
-      }).then((res) => {
-          that.moutai = res.result.moutai
-          that.profit = res.result.profit
-          console.log(that.moutai, that.profit)
-        })
-        .catch((err) => {
-          console.log(err)
-        })
-    },
-    query(queryParam) {
-      return request({
-        url: '/sku/list?sort=true',
-        method: 'get',
-        params: queryParam,
-      })
-        .then((res) => {
-          return res.result
-        })
-        .catch((err) => {
-          console.log(err)
-        })
-    },
-    handleChange(value, record) {
-      const that = this
-      console.log(value, that.profit, that.moutai)
-      record.notifyPrice = parseInt((value - that.profit)*6000/(7499-that.moutai))
-      const param = { skuId: record.skuId, notifyPrice: record.notifyPrice }
+      const param = { skuId: skuId, notifyPrice: value }
       request({
         url: '/sku/price-notify',
         method: 'put',
         params: param,
-      })
-        .then((res) => {
+      }).then((res) => {
           console.log(res)
-          that.query()
         })
         .catch((err) => {
           console.log(err)
         })
+    },
+    handleQuery (queryParam) {
+      const that = this
+      const query = () => {
+        return request({
+          url: '/sku/list',
+          method: 'get',
+          params: queryParam
+        }).then((res) => {
+          that.$refs.table.setDataSource(res.result)
+          const newTs = res.result.data[0].lastUpdateTs
+          if (that.lastUpdateTs == null) {
+            that.lastUpdateTs = newTs
+          }
+          if (that.lastUpdateTs < newTs) {
+            that.lastUpdateTs = newTs
+            that.playAudio()
+          }
+          setTimeout(() => {
+            query()
+          }, 1000)
+        }).catch((err) => {
+          console.log(err)
+        })
+      }
+      query(queryParam)
+    },
+    playAudio() {
+      document.getElementById('music').play()
     },
     handleAdd() {
       this.mdl = null
