@@ -17,6 +17,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -167,7 +168,9 @@ public class MonitorServiceImpl {
                         return;
                     }
                 }
-                List<Sku> skus = travelSimilar(new ArrayList<>(), Collections.singleton(newSku.getSkuId()));
+                Set<String> root = new HashSet<>();
+                root.add(newSku.getSkuId());
+                List<Sku> skus = travelSimilar(new ArrayList<>(), root);
                 if (!CollectionUtils.isEmpty(skus)) {
                     for (Sku sku : skus) {
                         sku.setSpuId(skuId);
