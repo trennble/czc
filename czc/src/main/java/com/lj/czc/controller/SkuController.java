@@ -1,9 +1,9 @@
 package com.lj.czc.controller;
 
 import com.lj.czc.common.PageResult;
+import com.lj.czc.pojo.bean.Sku;
 import com.lj.czc.pojo.vo.SkuVo;
 import com.lj.czc.service.MonitorServiceImpl;
-import com.lj.czc.pojo.bean.Sku;
 import com.lj.czc.service.SkuServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
