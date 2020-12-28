@@ -2,6 +2,7 @@ package com.lj.czc.service;
 
 import com.lj.czc.pojo.bean.Config;
 import com.lj.czc.repo.ConfigRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import java.util.List;
  * @author: jiangbo
  * @create: 2020-12-28
  **/
+@Slf4j
 @Service
 public class ConfigServiceImpl {
 
@@ -24,6 +26,7 @@ public class ConfigServiceImpl {
      * @return
      */
     public List<Config> parseAndSave(String content){
+        log.info("解析配置内容[{}]", content);
         List<Config> setConfigs = new ArrayList<>();
         for (String s : content.split("\n")) {
             String[] line = s.split(" ");
