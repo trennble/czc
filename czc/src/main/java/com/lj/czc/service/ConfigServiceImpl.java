@@ -3,6 +3,7 @@ package com.lj.czc.service;
 import com.lj.czc.pojo.bean.Config;
 import com.lj.czc.repo.ConfigRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +27,10 @@ public class ConfigServiceImpl {
      * @return
      */
     public List<Config> parseAndSave(String content){
-        log.info("解析配置内容[{}]", content);
+        if (Strings.isBlank(content)){
+            return new ArrayList<>();
+        }
+        content = content.trim();
         List<Config> setConfigs = new ArrayList<>();
         for (String s : content.split("\n")) {
             String[] line = s.split(" ");
