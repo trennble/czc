@@ -32,12 +32,16 @@ public class SkuController {
      * @return
      */
     @GetMapping("list")
-    public PageResult<Sku> list(){
-        List<Sku> skus = skuService.findAll();
-        List<Sku> sortedSkus = skus.stream()
-                .sorted(Comparator.comparingLong(Sku::getLastUpdateTs).reversed())
-                .collect(toList());
-        int size = skus.size();
+    public PageResult<Sku> list(boolean sort){
+        List<Sku> all = skuService.findAll();
+        Comparator<Sku> comparator;
+        if (sort) {
+            comparator = Comparator.comparing(Sku::getSpuId);
+        } else {
+            comparator = Comparator.comparingLong(Sku::getLastUpdateTs).reversed();
+        }
+        List<Sku> sortedSkus = all.stream().sorted(comparator).collect(toList());
+        int size = all.size();
         return new PageResult<Sku>(1, size, size, 1, sortedSkus);
     }
 

@@ -149,7 +149,7 @@ export default {
       loadData: (parameter) => {
         const requestParameters = Object.assign({}, parameter, this.queryParam)
         return request({
-          url: '/sku/list',
+          url: '/sku/list?normal=true',
           method: 'get',
           params: requestParameters,
         })
@@ -175,9 +175,6 @@ export default {
   created() {
     getRoleList({ t: new Date() })
   },
-  mounted() {
-    this.handleQuery(this.queryParam)
-  },
   computed: {
     rowSelection() {
       return {
@@ -187,6 +184,19 @@ export default {
     },
   },
   methods: {
+    query(queryParam){
+      return request({
+          url: '/sku/list?sort=false',
+          method: 'get',
+          params: queryParam,
+        })
+          .then((res) => {
+            return res.result
+          })
+          .catch((err) => {
+            console.log(err)
+          })
+    },
     handleChange(value, skuId) {
       const that = this
       const param = { skuId: skuId, notifyPrice: value }
@@ -196,45 +206,11 @@ export default {
         params: param,
       }).then((res) => {
           console.log(res)
+          that.query()
         })
         .catch((err) => {
           console.log(err)
         })
-    },
-    handleQuery(queryParam) {
-      const param = Object.assign({}, { loop: false }, queryParam)
-      const that = this
-      that.query(queryParam)
-    },
-    query(queryParam) {
-      const that = this
-      return request({
-        url: '/sku/list',
-        method: 'get',
-        params: queryParam,
-      })
-        .then((res) => {
-          const newTs = res.result.data[0].lastUpdateTs
-          if (that.lastUpdateTs == null) {
-            that.lastUpdateTs = newTs
-          }
-          if (that.lastUpdateTs < newTs) {
-            that.$refs.table.setDataSource(res.result)
-            that.lastUpdateTs = newTs
-            that.playAudio()
-          }
-          if (queryParam.loop) {
-            setTimeout(() => {
-              query(queryParam)
-            }, 1000)
-          }
-        })
-        .catch((err) => {
-          console.log(err)
-        })
-    },
-    playAudio() {
-      document.getElementById('music').play()
     },
     handleAdd() {
       this.mdl = null
