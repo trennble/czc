@@ -56,7 +56,7 @@ public class ConfigServiceImpl {
     }
 
     public enum ConfigEnum{
-        PROFIT("profig","利润"),
+        PROFIT("profit","利润"),
         MOUTAI("moutai","茅台");
 
         String key;
