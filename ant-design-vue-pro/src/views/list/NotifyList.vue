@@ -92,6 +92,10 @@ const columns = [
     dataIndex: 'notifyPrice',
   },
   {
+    title: '出货价格',
+    dataIndex: 'soldPrice',
+  },
+  {
     title: '更新时间',
     dataIndex: 'lastUpdateTs',
     customRender: (ts) => moment(ts).format('YYYY-MM-DD HH:mm:ss'),

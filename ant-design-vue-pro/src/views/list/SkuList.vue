@@ -19,10 +19,10 @@
           <a-badge :status="text | statusTypeFilter" :text="text | statusFilter" />
         </span>
         <span slot="description" slot-scope="text">
-          <ellipsis :length="40" tooltip>{{ text }}</ellipsis>
+          <ellipsis :length="60" tooltip>{{ text }}</ellipsis>
         </span>
-        <span slot="sellPrice" slot-scope="text, record">
-          <a-input style="margin: -5px 0" :value="text" @blur="(e) => handleChange(e.target.value, record)" />
+        <span slot="soldPrice" slot-scope="text, record">
+          <a-input-number style="margin: -5px 0" :value="text" @blur="(e) => handleChange(e.target.value, record)" />
         </span>
       </s-table>
 
@@ -67,10 +67,6 @@ const columns = [
     dataIndex: 'desc',
   },
   {
-    title: '京东价格',
-    dataIndex: 'hprice',
-  },
-  {
     title: '批发价格',
     dataIndex: 'wprice',
   },
@@ -80,8 +76,8 @@ const columns = [
   },
   {
     title: '出货价格',
-    dataIndex: 'sellPrice',
-    scopedSlots: { customRender: 'sellPrice' },
+    dataIndex: 'soldPrice',
+    scopedSlots: { customRender: 'soldPrice' },
   },
   {
     title: '更新时间',
@@ -180,7 +176,7 @@ export default {
       }).then((res) => {
           that.moutai = res.result.moutai
           that.profit = res.result.profit
-          console.log(that.moutai, that.profit)
+          console.log("初始化系统配置", that.moutai, that.profit)
         })
         .catch((err) => {
           console.log(err)
@@ -200,12 +196,16 @@ export default {
         })
     },
     handleChange(value, record) {
+      if (!value){
+        return
+      }
       const that = this
       console.log(value, that.profit, that.moutai)
       record.notifyPrice = parseInt((value - that.profit)*6000/(7499-that.moutai))
-      const param = { skuId: record.skuId, notifyPrice: record.notifyPrice }
+      record.soldPrice = value
+      const param = { skuId: record.skuId, soldPrice: value }
       request({
-        url: '/sku/price-notify',
+        url: '/sku/price-sold',
         method: 'put',
         params: param,
       })
