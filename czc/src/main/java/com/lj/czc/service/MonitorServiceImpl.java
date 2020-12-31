@@ -118,18 +118,24 @@ public class MonitorServiceImpl {
         }
         skuService.saveAll(newSkus);
         // 触发加入购物车
-        addToCart();
+        addAllToCart();
     }
 
     /**
      * 添加购物车
      */
-    public void addToCart() {
+    public void addAllToCart() {
         List<Sku> all = skuService.findAll();
+        if (!CollectionUtils.isEmpty(all)){
+            List<String> skuIds = all.stream().map(Sku::getSkuId).distinct().collect(toList());
+            addToCart(skuIds);
+        }
+    }
+
+    public void addToCart(Collection<String> skuIds){
         List<SkuVo> cartList = cartList();
         List<String> cartSkuIds = CollectionUtils.isEmpty(cartList) ? new ArrayList<>() : cartList.stream().map(SkuVo::getSkuId).collect(toList());
-        for (Sku sku : all) {
-            String skuId = sku.getSkuId();
+        for (String skuId : skuIds) {
             if (!cartSkuIds.contains(skuId)) {
                 String requestBody = String.format("{\"num\":1,\"productCode\":\"\",\"skuId\":%s,\"skuType\":1}", skuId);
                 sendPostRequest(ADD_TO_CART, requestBody, String.class, (data) -> data == null ? Strings.EMPTY : data).ifPresent((s) -> log.info("[{}]添加购物车成功", skuId));
@@ -197,7 +203,7 @@ public class MonitorServiceImpl {
                     }
                     skuService.saveAll(skus);
                     // 触发加入购物车
-                    addToCart();
+                    addAllToCart();
                 }
             }
         }
@@ -226,24 +232,33 @@ public class MonitorServiceImpl {
         List<SkuVo> cartList = cartList();
         if (!CollectionUtils.isEmpty(cartList)) {
             List<String> skuIds = cartList.stream().map(SkuVo::getSkuId).collect(toList());
-            Map<String, SkuVo> newSkuIdMapInfo = cartList.stream().collect(toMap(SkuVo::getSkuId, i -> i));
             Map<String, Sku> skuIdMapSku = skuService.findAllById(skuIds).stream().collect(toMap(Sku::getSkuId, i -> i));
             List<Sku> changedSkus = new ArrayList<>();
-            for (String skuId : skuIds) {
-                Sku sku = skuIdMapSku.get(skuId);
-                SkuVo skuVo = newSkuIdMapInfo.get(skuId);
-                if ((!Objects.equals(sku.getGoodsState(), skuVo.getGoodsState()) ||
-                        !Objects.equals(sku.getWPrice(), skuVo.getModelPrice()))) {
-                    sku.setWPrice(skuVo.getModelPrice());
-                    sku.setGoodsState(skuVo.getGoodsState());
-                    if (isNumeric(sku.getNotifyPrice()) && isNumeric(skuVo.getModelPrice())) {
-                        if (skuVo.getGoodsState() == 0 && Double.parseDouble(skuVo.getModelPrice()) <= Double.parseDouble(sku.getNotifyPrice())) {
-                            robotService.send(buildMsg(sku, "诚至诚商品变更提示"));
+
+            // 更新购物车商品价格
+            for (SkuVo skuVo : cartList) {
+                Sku sku = skuIdMapSku.remove(skuVo.getSkuId());
+                if (sku!=null){
+                    if ((!Objects.equals(sku.getGoodsState(), skuVo.getGoodsState()) ||
+                            !Objects.equals(sku.getWPrice(), skuVo.getModelPrice()))) {
+                        sku.setWPrice(skuVo.getModelPrice());
+                        sku.setGoodsState(skuVo.getGoodsState());
+                        if (isNumeric(sku.getNotifyPrice()) && isNumeric(skuVo.getModelPrice())) {
+                            if (skuVo.getGoodsState() == 0 && Double.parseDouble(skuVo.getModelPrice()) <= Double.parseDouble(sku.getNotifyPrice())) {
+                                robotService.send(buildMsg(sku, "诚至诚商品变更提示"));
+                            }
                         }
+                        changedSkus.add(sku);
                     }
-                    changedSkus.add(sku);
                 }
             }
+
+            // 把没有在购物车的商品添加至购物车
+            Set<String> skuNotInCart = skuIdMapSku.keySet();
+            if (!CollectionUtils.isEmpty(skuNotInCart)){
+                addToCart(skuNotInCart);
+            }
+
             if (!CollectionUtils.isEmpty(changedSkus)) {
                 skuService.saveAll(changedSkus);
             }

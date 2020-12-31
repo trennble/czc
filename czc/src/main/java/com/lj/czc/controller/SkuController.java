@@ -77,7 +77,7 @@ public class SkuController {
      */
     @PostMapping("add-cart")
     public void addCart(){
-        monitorService.addToCart();
+        monitorService.addAllToCart();
     }
 
     /**
