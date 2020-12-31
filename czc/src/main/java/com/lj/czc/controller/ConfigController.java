@@ -24,10 +24,6 @@ public class ConfigController {
     @Autowired
     private ConfigServiceImpl configService;
 
-    @Autowired
-    private RobotServiceImpl robotService;
-
-
     @GetMapping("map")
     public Map<String, String> map(){
         List<Config> all = configService.findAll();

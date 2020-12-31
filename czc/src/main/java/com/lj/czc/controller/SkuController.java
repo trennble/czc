@@ -64,13 +64,12 @@ public class SkuController {
     /**
      * 设置通知价格
      * @param skuId 设置的商品id
-     * @param notifyPrice 设置的通知价格
+     * @param soldPrice 设置的通知价格
+     * @return
      */
-    @PutMapping("price-notify")
-    public void priceNotify(String skuId, String notifyPrice){
-        Sku sku = skuService.findById(skuId).orElseThrow(() -> new RuntimeException("没有找到对应的商品ID"));
-        sku.setNotifyPrice(notifyPrice);
-        skuService.save(sku);
+    @PutMapping("price-sold")
+    public Sku priceSold(String skuId, String soldPrice){
+        return monitorService.setSoldPrice(skuId, soldPrice);
     }
 
     /**
@@ -82,7 +81,7 @@ public class SkuController {
     }
 
     /**
-     * 添加购物车
+     * 购物车列表
      * @return
      */
     @GetMapping("cart-list")
@@ -92,7 +91,7 @@ public class SkuController {
 
 
     /**
-     * 添加购物车
+     * 初始化购物车
      * @return
      */
     @GetMapping("init-spu")

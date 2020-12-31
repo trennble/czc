@@ -44,7 +44,7 @@ public class RobotCallbackController {
     @PostMapping("ding-robot")
     public void dingRobot(@RequestBody DingRequestBody dingRequestBody) {
         String content = dingRequestBody.getText().getContent();
-        List<String> keywords = Arrays.stream(ConfigServiceImpl.ConfigEnum.values()).map(ConfigServiceImpl.ConfigEnum::getValue).collect(toList());
+        List<String> keywords = Arrays.stream(Config.ConfigEnum.values()).map(Config.ConfigEnum::getName).collect(toList());
         boolean contain = false;
         for (String keyword : keywords) {
             contain = content.contains(keyword);

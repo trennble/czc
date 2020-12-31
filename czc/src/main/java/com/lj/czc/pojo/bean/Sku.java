@@ -1,5 +1,6 @@
 package com.lj.czc.pojo.bean;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lj.czc.pojo.vo.DetailDataVo;
 import com.lj.czc.pojo.vo.SkuInfoDto;
 import lombok.Data;
@@ -34,13 +35,16 @@ public class Sku {
     private String hPrice;
     // 批发价格
     private String wPrice;
-    // 通知价格 默认为wPrice
+    // 通知价格 默认为(soldPrice - 利润)*6000/(7499-茅台价格)
     private String notifyPrice;
+    // 卖出价格
+    private String soldPrice;
     // 上次更新时间
     private Long lastUpdateTs;
     // 序列号，标志当前商品第几次爬去
     // private Integer serialNumber;
     // 关联的sku商品id
+    @JsonIgnore
     private List<String> similarSkus;
 
     public Sku(String skuId, String name, String desc) {

@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
+import com.lj.czc.pojo.bean.Config;
 import com.lj.czc.pojo.bean.Sku;
 import com.lj.czc.pojo.vo.*;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,6 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -66,6 +66,9 @@ public class MonitorServiceImpl {
     @Autowired
     private SkuServiceImpl skuService;
 
+    @Autowired
+    private ConfigServiceImpl configService;
+
     private final AtomicBoolean monitorNew = new AtomicBoolean(false);
 
     private final AtomicBoolean monitorPrice = new AtomicBoolean(false);
@@ -76,6 +79,21 @@ public class MonitorServiceImpl {
             log.info(cookie);
         }
         return skuService.findAll();
+    }
+
+    public Sku setSoldPrice(String skuId, String soldPrice) {
+        Sku sku = skuService.findById(skuId).orElseThrow(() -> new RuntimeException("没有找到对应的商品ID"));
+        sku.setSoldPrice(soldPrice);
+        List<Config> allConfig = configService.findAll();
+        Map<String, Integer> configMap = allConfig.stream().collect(toMap(Config::getKey, i->Integer.valueOf(i.getValue())));
+        if (!configMap.keySet().containsAll(Arrays.asList("profit", "moutai"))) {
+            throw new RuntimeException("请设置利润和茅台价格");
+        }
+        Integer moutai = configMap.get("moutai");
+        Integer profit = configMap.get("profit");
+        int notifyPrice = (int) ((Double.parseDouble(soldPrice) - profit) * 6000 / (7499 - moutai));
+        sku.setNotifyPrice(String.valueOf(notifyPrice));
+        return skuService.save(sku);
     }
 
     public void initSpuId(){
@@ -204,7 +222,7 @@ public class MonitorServiceImpl {
     /**
      * 通过获取购物车里面的商品的状态来更新已有商品的状态
      */
-    public void updateSkuByFromCart() {
+    public void updateSkuFromCart() {
         List<SkuVo> cartList = cartList();
         if (!CollectionUtils.isEmpty(cartList)) {
             List<String> skuIds = cartList.stream().map(SkuVo::getSkuId).collect(toList());
@@ -218,8 +236,10 @@ public class MonitorServiceImpl {
                         !Objects.equals(sku.getWPrice(), skuVo.getModelPrice()))) {
                     sku.setWPrice(skuVo.getModelPrice());
                     sku.setGoodsState(skuVo.getGoodsState());
-                    if (skuVo.getGoodsState() == 0 && Double.parseDouble(skuVo.getModelPrice()) <= Double.parseDouble(sku.getNotifyPrice())) {
-                        robotService.send(buildMsg(sku, "诚至诚商品变更提示"));
+                    if (isNumeric(sku.getNotifyPrice()) && isNumeric(skuVo.getModelPrice())) {
+                        if (skuVo.getGoodsState() == 0 && Double.parseDouble(skuVo.getModelPrice()) <= Double.parseDouble(sku.getNotifyPrice())) {
+                            robotService.send(buildMsg(sku, "诚至诚商品变更提示"));
+                        }
                     }
                     changedSkus.add(sku);
                 }
@@ -236,7 +256,7 @@ public class MonitorServiceImpl {
     @PostConstruct
     public void monitorPrice() {
         loopExecAndRetry("商品价格监控", monitorPrice, () -> {
-            updateSkuByFromCart();
+            updateSkuFromCart();
             return true;
         });
     }
@@ -394,6 +414,18 @@ public class MonitorServiceImpl {
             }
         }
         log.info("总监控商品数[{}],商品状态[{}]", all.size(), JSON.toJSONString(reversed));
+    }
+
+    public static boolean isNumeric(String strNum) {
+        if (strNum == null) {
+            return false;
+        }
+        try {
+            double d = Double.parseDouble(strNum);
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+        return true;
     }
 
 }

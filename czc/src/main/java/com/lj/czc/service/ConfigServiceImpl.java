@@ -34,7 +34,7 @@ public class ConfigServiceImpl {
         List<Config> setConfigs = new ArrayList<>();
         for (String s : content.split("\n")) {
             String[] line = s.split(" ");
-            String key = ConfigEnum.ofValue(line[0].trim()).getKey();
+            String key = Config.ConfigEnum.ofName(line[0].trim()).getKey();
             String value = line[1].trim();
             Config config = setConfig(key, value);
             setConfigs.add(config);
@@ -55,42 +55,4 @@ public class ConfigServiceImpl {
         return configRepository.findAll();
     }
 
-    public enum ConfigEnum{
-        PROFIT("profit","利润"),
-        MOUTAI("moutai","茅台");
-
-        String key;
-        String value;
-
-        ConfigEnum(String key, String value){
-            this.key = key;
-            this.value = value;
-        }
-
-        public String getKey(){
-            return key;
-        }
-
-        public String getValue(){
-            return value;
-        }
-
-        public static ConfigEnum ofKey(String key){
-            for (ConfigEnum configEnum : ConfigEnum.values()) {
-                if (configEnum.key.equals(key)){
-                    return configEnum;
-                }
-            }
-            return null;
-        }
-
-        public static ConfigEnum ofValue(String value){
-            for (ConfigEnum configEnum : ConfigEnum.values()) {
-                if (configEnum.value.equals(value)){
-                    return configEnum;
-                }
-            }
-            return null;
-        }
-    }
 }
