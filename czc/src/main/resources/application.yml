@@ -4,9 +4,4 @@ block-brand: 三星,联想,锤子,魅族,索尼,诺基亚,飞利浦,美图,海�
 
 logging:
   level:
-    org:
-      springframework:
-        data:
-          mongodb:
-            core:
-              MongoTemplate: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG

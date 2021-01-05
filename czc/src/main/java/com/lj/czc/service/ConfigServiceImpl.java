@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author: jiangbo
@@ -20,6 +21,9 @@ public class ConfigServiceImpl {
 
     @Autowired
     private ConfigRepository configRepository;
+
+    @Autowired
+    private CacheServiceImpl cacheService;
 
     /**
      * 解析并存储配置
@@ -34,12 +38,19 @@ public class ConfigServiceImpl {
         List<Config> setConfigs = new ArrayList<>();
         for (String s : content.split("\n")) {
             String[] line = s.split(" ");
-            String key = Config.ConfigEnum.ofName(line[0].trim()).getKey();
+            Config.ConfigEnum configEnum = Config.ConfigEnum.ofName(line[0].trim());
+            String key = configEnum.getKey();
             String value = line[1].trim();
             Config config = setConfig(key, value);
             setConfigs.add(config);
+            cacheService.refreshConfig(configEnum);
         }
         return setConfigs;
+    }
+
+    public Optional<Config> find(Config.ConfigEnum configEnum){
+        String key = configEnum.getKey();
+        return configRepository.findById(key);
     }
 
     public Config setConfig(String name, String value){

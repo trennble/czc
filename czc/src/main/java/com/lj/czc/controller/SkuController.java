@@ -42,7 +42,7 @@ public class SkuController {
         }
         List<Sku> sortedSkus = all.stream().sorted(comparator).collect(toList());
         int size = all.size();
-        return new PageResult<Sku>(1, size, size, 1, sortedSkus);
+        return new PageResult<>(1, size, size, 1, sortedSkus);
     }
 
     /**

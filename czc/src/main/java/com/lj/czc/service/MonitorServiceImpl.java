@@ -67,7 +67,7 @@ public class MonitorServiceImpl {
     private SkuServiceImpl skuService;
 
     @Autowired
-    private ConfigServiceImpl configService;
+    private CacheServiceImpl cacheService;
 
     private final AtomicBoolean monitorNew = new AtomicBoolean(false);
 
@@ -84,14 +84,7 @@ public class MonitorServiceImpl {
     public Sku setSoldPrice(String skuId, String soldPrice) {
         Sku sku = skuService.findById(skuId).orElseThrow(() -> new RuntimeException("没有找到对应的商品ID"));
         sku.setSoldPrice(soldPrice);
-        List<Config> allConfig = configService.findAll();
-        Map<String, Integer> configMap = allConfig.stream().collect(toMap(Config::getKey, i->Integer.valueOf(i.getValue())));
-        if (!configMap.keySet().containsAll(Arrays.asList("profit", "moutai"))) {
-            throw new RuntimeException("请设置利润和茅台价格");
-        }
-        Integer moutai = configMap.get("moutai");
-        Integer profit = configMap.get("profit");
-        int notifyPrice = (int) ((Double.parseDouble(soldPrice) - profit) * 6000 / (7499 - moutai));
+        Double notifyPrice = calNotifyPrice(Double.valueOf(soldPrice));
         sku.setNotifyPrice(String.valueOf(notifyPrice));
         return skuService.save(sku);
     }
@@ -243,8 +236,19 @@ public class MonitorServiceImpl {
                             !Objects.equals(sku.getWPrice(), skuVo.getModelPrice()))) {
                         sku.setWPrice(skuVo.getModelPrice());
                         sku.setGoodsState(skuVo.getGoodsState());
-                        if (isNumeric(sku.getNotifyPrice()) && isNumeric(skuVo.getModelPrice())) {
-                            if (skuVo.getGoodsState() == 0 && Double.parseDouble(skuVo.getModelPrice()) <= Double.parseDouble(sku.getNotifyPrice())) {
+                        if (isNumeric(sku.getNotifyPrice())) {
+                            Double notifyPrice = null;
+                            if (isNumeric(sku.getSoldPrice())) {
+                                notifyPrice = calNotifyPrice(Double.valueOf(sku.getSoldPrice()));
+                            } else if (isNumeric(skuVo.getModelPrice())) {
+                                // 没有设置售出价格就使用默认的提醒价格
+                                notifyPrice = Double.valueOf(sku.getNotifyPrice());
+                            }
+
+                            if (notifyPrice != null
+                                    && skuVo.getGoodsState() == 0
+                                    && Double.parseDouble(skuVo.getModelPrice()) < notifyPrice) {
+                                sku.setNotifyPrice(String.valueOf(notifyPrice));
                                 robotService.send(buildMsg(sku, "诚至诚商品变更提示"));
                             }
                         }
@@ -263,6 +267,12 @@ public class MonitorServiceImpl {
                 skuService.saveAll(changedSkus);
             }
         }
+    }
+
+    private Double calNotifyPrice(Double soldPrice){
+        Integer moutai = cacheService.getMoutai();
+        Integer profit = cacheService.getProfit();
+        return (soldPrice - profit) * 6000 / (7499 - moutai);
     }
 
     /**
@@ -436,7 +446,7 @@ public class MonitorServiceImpl {
             return false;
         }
         try {
-            double d = Double.parseDouble(strNum);
+            Double.parseDouble(strNum);
         } catch (NumberFormatException nfe) {
             return false;
         }
