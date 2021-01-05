@@ -10,7 +10,7 @@
         :alert="true"
         :rowSelection="rowSelection"
         showPagination="auto"
-        :pageSize="200"
+        :pageSize="300"
       >
         <span slot="serial" slot-scope="text, record, index">
           {{ index + 1 }}
