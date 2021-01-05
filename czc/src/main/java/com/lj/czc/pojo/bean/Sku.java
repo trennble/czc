@@ -93,11 +93,11 @@ public class Sku {
 
     public void setGoodsState(Integer state){
         this.goodsState = state;
-        if (goodsState == 0){
-            this.desc = "有货";
-        }else{
-            this.desc = "无货";
-        }
+        this.lastUpdateTs = System.currentTimeMillis();
+    }
+
+    public void setDesc(String desc){
+        this.desc = desc;
         this.lastUpdateTs = System.currentTimeMillis();
     }
 }

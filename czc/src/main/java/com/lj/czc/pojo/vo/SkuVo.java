@@ -17,4 +17,6 @@ public class SkuVo {
     private Integer goodsState;
 
     private String modelPrice;
+
+    private StockInfo stockInfo;
 }

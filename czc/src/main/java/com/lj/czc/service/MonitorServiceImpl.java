@@ -4,7 +4,6 @@ import cn.hutool.core.collection.CollectionUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
-import com.lj.czc.pojo.bean.Config;
 import com.lj.czc.pojo.bean.Sku;
 import com.lj.czc.pojo.vo.*;
 import lombok.extern.slf4j.Slf4j;
@@ -232,10 +231,12 @@ public class MonitorServiceImpl {
             for (SkuVo skuVo : cartList) {
                 Sku sku = skuIdMapSku.remove(skuVo.getSkuId());
                 if (sku!=null){
-                    if ((!Objects.equals(sku.getGoodsState(), skuVo.getGoodsState()) ||
-                            !Objects.equals(sku.getWPrice(), skuVo.getModelPrice()))) {
+                    if ((!Objects.equals(sku.getGoodsState(), skuVo.getGoodsState())
+                            || !Objects.equals(sku.getWPrice(), skuVo.getModelPrice())
+                            || !Objects.equals(sku.getDesc(), skuVo.getStockInfo().getDesc()))) {
                         sku.setWPrice(skuVo.getModelPrice());
                         sku.setGoodsState(skuVo.getGoodsState());
+                        sku.setDesc(skuVo.getStockInfo().getDesc());
                         if (isNumeric(sku.getNotifyPrice())) {
                             Double notifyPrice = null;
                             if (isNumeric(sku.getSoldPrice())) {
