@@ -59,9 +59,9 @@ public class Sku {
         sku.skuId = String.valueOf(skuInfoDto.getSkuId());
         sku.name = skuInfoDto.getWareName();
         sku.desc = skuInfoDto.getStockInfo().getDesc();
-        sku.hPrice = skuInfoDto.getHPrice();
-        sku.wPrice = skuInfoDto.getWPrice();
-        sku.notifyPrice = skuInfoDto.getWPrice();
+        sku.hPrice = Double.valueOf(skuInfoDto.getHPrice()).intValue();
+        sku.wPrice = Double.valueOf(skuInfoDto.getWPrice()).intValue();
+        sku.notifyPrice = Double.valueOf(skuInfoDto.getWPrice()).intValue();
         sku.lastUpdateTs = System.currentTimeMillis();
         /**
          * 默认使用描述初始化商品状态，可能会不正确

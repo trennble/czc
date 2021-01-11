@@ -65,6 +65,7 @@ public class RequestHelper {
                     log.error("服务器状态码错误[{}]", body);
                 }
             } catch (JSONException e) {
+                e.printStackTrace();
                 log.error("解析json异常[{}]", body);
             }
         } else {

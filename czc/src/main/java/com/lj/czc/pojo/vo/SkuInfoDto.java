@@ -13,9 +13,9 @@ public class SkuInfoDto {
 
     private String skuImage;
 
-    private Integer hPrice;
-    private Integer kaPrice;
-    private Integer wPrice;
+    private String hPrice;
+    private String kaPrice;
+    private String wPrice;
 
     // 商品名称
     private String wareName;
