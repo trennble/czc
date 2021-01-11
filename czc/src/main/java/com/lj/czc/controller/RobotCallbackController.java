@@ -54,6 +54,7 @@ public class RobotCallbackController {
         }
         if (contain) {
             config(dingRequestBody);
+            skuService.reCalculateNotifyPrice();
         } else {
             try {
                 String skuId = content.substring(content.indexOf(skuKey) + skuKey.length(), content.indexOf(priceKey));
@@ -61,7 +62,7 @@ public class RobotCallbackController {
                 Optional<Sku> skuOptional = skuService.findById(skuId);
                 if (skuOptional.isPresent()) {
                     Sku sku = skuOptional.get();
-                    sku.setNotifyPrice(price);
+                    sku.setNotifyPrice((int)Double.parseDouble(price));
                     robotService.send("设置价格成功\n" +
                             "商品id：" + skuId + "\n" +
                             "商品名称：" + sku.getName() + "\n" +

@@ -1,27 +1,21 @@
 package com.lj.czc.service;
 
-import cn.hutool.core.collection.CollectionUtil;
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.JSONObject;
 import com.lj.czc.pojo.bean.Sku;
-import com.lj.czc.pojo.vo.*;
+import com.lj.czc.pojo.vo.ListDataVo;
+import com.lj.czc.pojo.vo.SkuInfoDto;
+import com.lj.czc.pojo.vo.SkuVo;
+import com.lj.czc.pojo.vo.StockInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.RestTemplate;
 
-import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.toList;
@@ -36,9 +30,6 @@ import static java.util.stream.Collectors.toMap;
 public class MonitorServiceImpl {
 
     public static final String LIST_URL = "https://jingli-server-c.jd.com/fuli/search/searchList?page=%s&cat=653-655";
-    public static final String SKU_URL = "https://jingli-server-c.jd.com/fuli/product/detail?productCode=%s&areaIds=22_1930_49324_49398";
-    public static final String CART_LIST = "https://jingli-server-c.jd.com/fuli/cart/queryCartList";
-    public static final String ADD_TO_CART = "https://jingli-server-c.jd.com/fuli/cart/addToCart";
 
     /**
      * 屏蔽的品牌
@@ -49,15 +40,7 @@ public class MonitorServiceImpl {
     /**
      * 屏蔽的商品
      */
-    private Set<String> blockSku = new HashSet<>();
-
-    @Value("${cookie}")
-    private String cookie;
-
-    private static final String CODE = "-XWJ7oIOzkBMCQobPP_G4QLsUK2-f6_nOFsEDSm6rRk=";
-
-    @Autowired
-    private RestTemplate restTemplate;
+    private final Set<String> blockSku = new HashSet<>();
 
     @Autowired
     private RobotServiceImpl robotService;
@@ -66,91 +49,46 @@ public class MonitorServiceImpl {
     private SkuServiceImpl skuService;
 
     @Autowired
-    private CacheServiceImpl cacheService;
+    private RequestHelper requestHelper;
 
     private final AtomicBoolean monitorNew = new AtomicBoolean(false);
 
     private final AtomicBoolean monitorPrice = new AtomicBoolean(false);
 
-    public List<Sku> list(String cookie) {
-        if (!Strings.isBlank(cookie) && !this.cookie.equals(cookie)) {
-            this.cookie = cookie;
-            log.info(cookie);
-        }
-        return skuService.findAll();
-    }
-
-    public Sku setSoldPrice(String skuId, String soldPrice) {
-        Sku sku = skuService.findById(skuId).orElseThrow(() -> new RuntimeException("没有找到对应的商品ID"));
-        sku.setSoldPrice(soldPrice);
-        Double notifyPrice = calNotifyPrice(Double.valueOf(soldPrice));
-        sku.setNotifyPrice(String.valueOf(notifyPrice));
-        return skuService.save(sku);
-    }
-
-    public void initSpuId(){
-        List<Sku> skus = skuService.findAll();
-        List<Sku> newSkus = new ArrayList<>();
-        for (Sku sku : skus) {
-            String skuId = sku.getSkuId();
-            Optional<Sku> dbSkuOpt = skuService.findById(skuId);
-            dbSkuOpt.ifPresent((dbSku) -> {
-                HashSet<String> similarSkuIds = new HashSet<>();
-                similarSkuIds.add(skuId);
-                List<Sku> similars = travelSimilar(new ArrayList<>(), similarSkuIds);
-                if (!CollectionUtils.isEmpty(similars)) {
-                    for (Sku similar : similars) {
-                        similar.setSpuId(skuId);
-                        log.info("新上架商品[{}]的关联商品[{}]状态[{}]", skuId, similar.getSkuId(), similar.getDesc());
-                        // robotService.send(buildMsg(similar, "诚至诚商品上架提示"));
-                    }
-                    newSkus.addAll(similars);
-                }
-            });
-        }
-        skuService.saveAll(newSkus);
-        // 触发加入购物车
-        addAllToCart();
-    }
-
     /**
-     * 添加购物车
+     * 监控新商品，通过商品列表去监控新上架商品
      */
-    public void addAllToCart() {
-        List<Sku> all = skuService.findAll();
-        if (!CollectionUtils.isEmpty(all)){
-            List<String> skuIds = all.stream().map(Sku::getSkuId).distinct().collect(toList());
-            addToCart(skuIds);
-        }
-    }
-
-    public void addToCart(Collection<String> skuIds){
-        List<SkuVo> cartList = cartList();
-        List<String> cartSkuIds = CollectionUtils.isEmpty(cartList) ? new ArrayList<>() : cartList.stream().map(SkuVo::getSkuId).collect(toList());
-        for (String skuId : skuIds) {
-            if (!cartSkuIds.contains(skuId)) {
-                String requestBody = String.format("{\"num\":1,\"productCode\":\"\",\"skuId\":%s,\"skuType\":1}", skuId);
-                sendPostRequest(ADD_TO_CART, requestBody, String.class, (data) -> data == null ? Strings.EMPTY : data).ifPresent((s) -> log.info("[{}]添加购物车成功", skuId));
+    @PostConstruct
+    public void monitorNewItem() {
+        loopExecAndRetry("新商品监控", monitorNew, () -> {
+            int page = 1;
+            int totalPage = getPage(page);
+            for (int i = page + 1; i <= totalPage; i++) {
+                getPage(i);
             }
-        }
+            printListInfo();
+            return true;
+        });
     }
 
     /**
-     * 查询购物车列表
-     *
-     * @return 购物车列表数据
+     * 通过购物车列表监控商品状态（价格，是否可买）
      */
-    public List<SkuVo> cartList() {
-        return sendPostRequest(CART_LIST, null, CartDataVo.class, CartDataVo::getSkuVoList).orElse(Collections.emptyList());
+    @PostConstruct
+    public void monitorPrice() {
+        loopExecAndRetry("商品价格监控", monitorPrice, () -> {
+            checkSkuFromCart();
+            return true;
+        });
     }
 
     /**
-     * @param page         爬取第几页
+     * @param page 爬取第几页
      * @return 总共有多少页
      */
     private int getPage(int page) {
         String listUrl = String.format(LIST_URL, page);
-        return sendGetRequest(listUrl, ListDataVo.class, (data) -> {
+        return requestHelper.sendGetRequest(listUrl, ListDataVo.class, (data) -> {
             Integer pageCount = data.getPageCount();
             List<SkuInfoDto> skuInfoDtos = data.getSkuInfoDtos();
             if (!CollectionUtils.isEmpty(skuInfoDtos)) {
@@ -164,6 +102,59 @@ public class MonitorServiceImpl {
             }
             return pageCount;
         }).orElse(0);
+    }
+
+    /**
+     * 通过获取购物车里面的商品的状态来更新已有商品的状态
+     */
+    public void checkSkuFromCart() {
+        List<SkuVo> cartList = skuService.cartList();
+        if (!CollectionUtils.isEmpty(cartList)) {
+            List<String> skuIds = cartList.stream().map(SkuVo::getSkuId).collect(toList());
+            Map<String, Sku> skuIdMapSku = skuService.findAllById(skuIds).stream().collect(toMap(Sku::getSkuId, i -> i));
+            List<Sku> changedSkus = new ArrayList<>();
+
+            // 更新购物车商品价格
+            for (SkuVo skuVo : cartList) {
+                Sku sku = skuIdMapSku.remove(skuVo.getSkuId());
+                if (sku!=null){
+                    if ((!Objects.equals(sku.getGoodsState(), skuVo.getGoodsState())
+                            || !Objects.equals(sku.getWPrice(), skuVo.getModelPrice())
+                            || !Objects.equals(sku.getDesc(), skuVo.getStockInfo().getDesc()))) {
+                        sku.setWPrice(skuVo.getModelPrice());
+                        sku.setGoodsState(skuVo.getGoodsState());
+                        sku.setDesc(skuVo.getStockInfo().getDesc());
+                        if (null != sku.getNotifyPrice() && sku.getNotifyPrice() > 0) {
+                            Integer notifyPrice = null;
+                            if (null != sku.getSoldPrice() && sku.getSoldPrice() > 0) {
+                                notifyPrice = skuService.calNotifyPrice(sku.getSoldPrice());
+                            } else if (null != skuVo.getModelPrice()) {
+                                // 没有设置售出价格就使用默认的提醒价格
+                                notifyPrice = sku.getNotifyPrice();
+                            }
+
+                            if (null != notifyPrice
+                                    && skuVo.getGoodsState() == 0
+                                    && skuVo.getModelPrice() < notifyPrice) {
+                                sku.setNotifyPrice(notifyPrice);
+                                robotService.send(buildMsg(sku, "诚至诚商品变更提示"));
+                            }
+                        }
+                        changedSkus.add(sku);
+                    }
+                }
+            }
+
+            // 把没有在购物车的商品添加至购物车
+            Set<String> skuNotInCart = skuIdMapSku.keySet();
+            if (!CollectionUtils.isEmpty(skuNotInCart)){
+                skuService.addToCart(skuNotInCart);
+            }
+
+            if (!CollectionUtils.isEmpty(changedSkus)) {
+                skuService.saveAll(changedSkus);
+            }
+        }
     }
 
     /**
@@ -186,7 +177,7 @@ public class MonitorServiceImpl {
                 }
                 Set<String> root = new HashSet<>();
                 root.add(newSku.getSkuId());
-                List<Sku> skus = travelSimilar(new ArrayList<>(), root);
+                List<Sku> skus = skuService.travelSimilar(new ArrayList<>(), root);
                 if (!CollectionUtils.isEmpty(skus)) {
                     for (Sku sku : skus) {
                         sku.setSpuId(skuId);
@@ -195,96 +186,10 @@ public class MonitorServiceImpl {
                     }
                     skuService.saveAll(skus);
                     // 触发加入购物车
-                    addAllToCart();
+                    skuService.addAllToCart();
                 }
             }
         }
-    }
-
-    /**
-     * 监控新商品，通过商品列表去监控新上架商品
-     */
-    @PostConstruct
-    public void monitorNewItem() {
-        loopExecAndRetry("新商品监控", monitorNew, () -> {
-            int page = 1;
-            int totalPage = getPage(page);
-            for (int i = page + 1; i <= totalPage; i++) {
-                getPage(i);
-            }
-            printListInfo();
-            return true;
-        });
-    }
-
-    /**
-     * 通过获取购物车里面的商品的状态来更新已有商品的状态
-     */
-    public void updateSkuFromCart() {
-        List<SkuVo> cartList = cartList();
-        if (!CollectionUtils.isEmpty(cartList)) {
-            List<String> skuIds = cartList.stream().map(SkuVo::getSkuId).collect(toList());
-            Map<String, Sku> skuIdMapSku = skuService.findAllById(skuIds).stream().collect(toMap(Sku::getSkuId, i -> i));
-            List<Sku> changedSkus = new ArrayList<>();
-
-            // 更新购物车商品价格
-            for (SkuVo skuVo : cartList) {
-                Sku sku = skuIdMapSku.remove(skuVo.getSkuId());
-                if (sku!=null){
-                    if ((!Objects.equals(sku.getGoodsState(), skuVo.getGoodsState())
-                            || !Objects.equals(sku.getWPrice(), skuVo.getModelPrice())
-                            || !Objects.equals(sku.getDesc(), skuVo.getStockInfo().getDesc()))) {
-                        sku.setWPrice(skuVo.getModelPrice());
-                        sku.setGoodsState(skuVo.getGoodsState());
-                        sku.setDesc(skuVo.getStockInfo().getDesc());
-                        if (isNumeric(sku.getNotifyPrice())) {
-                            Double notifyPrice = null;
-                            if (isNumeric(sku.getSoldPrice())) {
-                                notifyPrice = calNotifyPrice(Double.valueOf(sku.getSoldPrice()));
-                            } else if (isNumeric(skuVo.getModelPrice())) {
-                                // 没有设置售出价格就使用默认的提醒价格
-                                notifyPrice = Double.valueOf(sku.getNotifyPrice());
-                            }
-
-                            if (notifyPrice != null
-                                    && skuVo.getGoodsState() == 0
-                                    && Double.parseDouble(skuVo.getModelPrice()) < notifyPrice) {
-                                sku.setNotifyPrice(String.valueOf(notifyPrice));
-                                robotService.send(buildMsg(sku, "诚至诚商品变更提示"));
-                            }
-                        }
-                        changedSkus.add(sku);
-                    }
-                }
-            }
-
-            // 把没有在购物车的商品添加至购物车
-            Set<String> skuNotInCart = skuIdMapSku.keySet();
-            if (!CollectionUtils.isEmpty(skuNotInCart)){
-                addToCart(skuNotInCart);
-            }
-
-            if (!CollectionUtils.isEmpty(changedSkus)) {
-                skuService.saveAll(changedSkus);
-            }
-        }
-    }
-
-    private Double calNotifyPrice(Double soldPrice){
-        Integer moutai = cacheService.getMoutai();
-        Integer profit = cacheService.getProfit();
-        return (soldPrice - profit) * 6000 / (7499 - moutai);
-    }
-
-    /**
-     * 通过购物车列表监控商品状态（价格，是否可买）
-     */
-    @PostConstruct
-    public void monitorPrice() {
-        loopExecAndRetry("商品价格监控", monitorPrice, () -> {
-            updateSkuFromCart();
-            return true;
-        });
     }
 
     /**
@@ -332,93 +237,6 @@ public class MonitorServiceImpl {
         });
     }
 
-    /**
-     * 遍历给定商品的所有同型号商品
-     *
-     * @param visitedSkuIds 记录遍历过的节点
-     * @param similarSkuIds 记录所有的关联节点
-     * @return 所有关联商品的信息
-     */
-    private List<Sku> travelSimilar(Collection<String> visitedSkuIds, Set<String> similarSkuIds) {
-        ArrayList<String> notVisitedIds = new ArrayList<>(similarSkuIds);
-        notVisitedIds.removeAll(visitedSkuIds);
-        if (CollectionUtil.isEmpty(notVisitedIds)) {
-            return Collections.emptyList();
-        }
-        List<Sku> similarSkus = new ArrayList<>();
-        for (String notVisitedId : notVisitedIds) {
-            Optional<Sku> skuOptional = getSkuInfo(notVisitedId);
-            skuOptional.ifPresent(sku -> {
-                similarSkus.add(sku);
-                List<String> itemSimilarSkuIds = sku.getSimilarSkus();
-                if (!CollectionUtils.isEmpty(itemSimilarSkuIds)) {
-                    similarSkuIds.addAll(itemSimilarSkuIds);
-                }
-            });
-            visitedSkuIds.add(notVisitedId);
-        }
-        List<Sku> nextSimilarSkus = travelSimilar(visitedSkuIds, similarSkuIds);
-        similarSkus.addAll(nextSimilarSkus);
-        return similarSkus;
-    }
-
-
-    private Optional<Sku> getSkuInfo(String skuId) {
-        String skuUrl = String.format(SKU_URL, skuId);
-        return sendGetRequest(skuUrl, DetailDataVo.class, (data) -> {
-            Sku sku = Sku.generate(data);
-            List<String> similarSkuIds = data.getSimilarProducts().stream()
-                    .flatMap(similarProduct -> similarProduct.getSaleAttrList().stream().
-                            flatMap(saleAttr -> saleAttr.getSkuIds().stream()))
-                    .map(String::valueOf)
-                    .collect(toList());
-            sku.setSimilarSkus(similarSkuIds);
-            return sku;
-        });
-    }
-
-    private <T, E> Optional<E> sendGetRequest(String url, Class<T> clazz, Function<T, E> function) {
-        HttpEntity<String> entity = getEntity(null);
-        return sendRequest(url, HttpMethod.GET, entity, clazz, function);
-    }
-
-    private <T, E> Optional<E> sendPostRequest(String url, String requestBody, Class<T> clazz, Function<T, E> function) {
-        HttpEntity<String> entity = getEntity(requestBody);
-        return sendRequest(url, HttpMethod.POST, entity, clazz, function);
-    }
-
-    @NotNull
-    private HttpEntity<String> getEntity(String requestBody) {
-        HttpHeaders headers = new HttpHeaders();
-        String cookie = String.format("sam_cookie_activity=%s; activityCode=\"%s\"", this.cookie, CODE);
-        headers.add("cookie", cookie);
-        HttpEntity<String> entity = Strings.isBlank(requestBody) ? new HttpEntity<>(headers) : new HttpEntity<>(requestBody, headers);
-        return entity;
-    }
-
-    private <T, E> Optional<E> sendRequest(String url, HttpMethod httpMethod, HttpEntity<?> httpEntity, Class<T> clazz, Function<T, E> function) {
-        ResponseEntity<String> responseEntity = restTemplate.exchange(url, httpMethod, httpEntity, String.class);
-        HttpStatus statusCode = responseEntity.getStatusCode();
-        String body = responseEntity.getBody();
-        if (HttpStatus.OK == statusCode) {
-            try {
-                JSONObject responseData = JSONObject.parseObject(body);
-                T data = responseData.getObject("data", clazz);
-                Integer code = responseData.getObject("code", Integer.class);
-                if (code == 1000) {
-                    return Optional.ofNullable(function.apply(data));
-                } else {
-                    log.error("服务器状态码错误[{}]", body);
-                }
-            } catch (JSONException e) {
-                log.error("解析json异常[{}]", body);
-            }
-        } else {
-            log.error("请求异常http status[{}]，response body[{}]", statusCode.value(), body);
-        }
-        return Optional.empty();
-    }
-
     private String buildMsg(Sku sku, String title) {
         return title + "\n" +
                 "商品id：" + sku.getSkuId() + "\n" +
@@ -441,17 +259,4 @@ public class MonitorServiceImpl {
         }
         log.info("总监控商品数[{}],商品状态[{}]", all.size(), JSON.toJSONString(reversed));
     }
-
-    public static boolean isNumeric(String strNum) {
-        if (strNum == null) {
-            return false;
-        }
-        try {
-            Double.parseDouble(strNum);
-        } catch (NumberFormatException nfe) {
-            return false;
-        }
-        return true;
-    }
-
 }

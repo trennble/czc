@@ -32,13 +32,13 @@ public class Sku {
     // 商品状态
     private String desc;
     // 京东价格
-    private String hPrice;
+    private Integer hPrice;
     // 批发价格
-    private String wPrice;
+    private Integer wPrice;
     // 通知价格 默认为(soldPrice - 利润)*6000/(7499-茅台价格)
-    private String notifyPrice;
+    private Integer notifyPrice;
     // 卖出价格
-    private String soldPrice;
+    private Integer soldPrice;
     // 上次更新时间
     private Long lastUpdateTs;
     // 序列号，标志当前商品第几次爬去
@@ -75,9 +75,9 @@ public class Sku {
         sku.skuId = String.valueOf(detailDataVo.getSkuId());
         sku.name = detailDataVo.getBaseInfo().getSkuName();
         sku.desc = detailDataVo.getProductStockVo().getDesc();
-        sku.hPrice = detailDataVo.getBpMap().get(JD_PRICE);
-        sku.wPrice = detailDataVo.getBpMap().get(MODEL_PRICE);
-        sku.notifyPrice = detailDataVo.getBpMap().get(MODEL_PRICE);
+        sku.hPrice = (int)Double.parseDouble(detailDataVo.getBpMap().get(JD_PRICE));
+        sku.wPrice = (int)Double.parseDouble(detailDataVo.getBpMap().get(MODEL_PRICE));
+        sku.notifyPrice = (int)Double.parseDouble(detailDataVo.getBpMap().get(MODEL_PRICE));
         sku.lastUpdateTs = System.currentTimeMillis();
         /**
          * 默认使用描述初始化商品状态，可能会不正确
@@ -86,7 +86,7 @@ public class Sku {
         return sku;
     }
 
-    public void setWPrice(String wPrice){
+    public void setWPrice(Integer wPrice){
         this.wPrice = wPrice;
         this.lastUpdateTs = System.currentTimeMillis();
     }

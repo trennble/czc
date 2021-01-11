@@ -16,7 +16,7 @@ public class SkuVo {
      */
     private Integer goodsState;
 
-    private String modelPrice;
+    private Integer modelPrice;
 
     private StockInfo stockInfo;
 }

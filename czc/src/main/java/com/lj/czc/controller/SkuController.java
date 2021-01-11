@@ -22,9 +22,6 @@ import static java.util.stream.Collectors.toList;
 public class SkuController {
 
     @Autowired
-    private MonitorServiceImpl monitorService;
-
-    @Autowired
     private SkuServiceImpl skuService;
 
     /**
@@ -46,57 +43,41 @@ public class SkuController {
     }
 
     /**
-     * 手动触发新商品监控
-     */
-    @GetMapping("monitor-list")
-    public void monitorList(){
-        monitorService.monitorNewItem();
-    }
-
-    /**
-     * 手动触发商品价格监控
-     */
-    @GetMapping("monitor-price")
-    public void monitorPrice(){
-        monitorService.monitorPrice();
-    }
-
-    /**
      * 设置通知价格
      * @param skuId 设置的商品id
      * @param soldPrice 设置的通知价格
      * @return
      */
     @PutMapping("price-sold")
-    public Sku priceSold(String skuId, String soldPrice){
-        return monitorService.setSoldPrice(skuId, soldPrice);
+    public Sku priceSold(String skuId, Integer soldPrice){
+        return skuService.setSoldPrice(skuId, soldPrice);
     }
 
     /**
-     * 添加购物车
+     * 初始化购物车
      */
-    @PostMapping("add-cart")
+    @PostMapping("init-cart")
     public void addCart(){
-        monitorService.addAllToCart();
+        skuService.addAllToCart();
     }
 
     /**
-     * 购物车列表
+     * 购物车商品列表
      * @return
      */
     @GetMapping("cart-list")
     public List<SkuVo> cartList(){
-        return monitorService.cartList();
+        return skuService.cartList();
     }
 
 
     /**
-     * 初始化购物车
+     * 初始化商品的关联商品并使用当前商品的skuid作为spuid
      * @return
      */
     @GetMapping("init-spu")
     public void initSpuId(){
-        monitorService.initSpuId();
+        skuService.initSpuId();
     }
 
 
