@@ -76,7 +76,7 @@ public class MonitorServiceImpl {
      * 通过购物车列表监控商品状态（价格，是否可买）
      */
     @PostConstruct
-    public void monitorPrice() {
+    public void monitorCart() {
         loopExecAndRetry("商品价格监控", monitorPrice, () -> {
             checkSkuFromCart();
             return true;
